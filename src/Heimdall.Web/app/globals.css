@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+/* ---- Map design tokens to Tailwind utilities (inline = utilities reference the live CSS vars) ---- */
+@theme inline {
+  --font-sans: var(--font-rajdhani);
+  --font-heading: var(--font-chakra);
+  --font-display: var(--font-orbitron);
+  --font-mono: var(--font-jetbrains);
+
+  --color-base: var(--bg-base);
+  --color-panel: var(--bg-panel);
+  --color-elevated: var(--bg-elevated);
+  --color-border: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-grid: var(--grid-line);
+
+  --color-ink: var(--text-primary);
+  --color-muted: var(--text-secondary);
+  --color-faint: var(--text-muted);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
+
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+  --color-series-5: var(--series-5);
+  --color-series-6: var(--series-6);
+
+  --radius-sm: 2px;
+  --radius-md: 4px;
+
+  --animate-pulse-glow: pulse-glow 1.5s ease-in-out infinite;
+}
+
+/* ---- Single source of truth for palette values (swappable via [data-palette]) ---- */
+:root {
+  --bg-base: #0a0a0f;
+  --bg-panel: #111218;
+  --bg-elevated: #16181f;
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --grid-line: rgba(255, 255, 255, 0.06);
+
+  --text-primary: #e8eaf0;
+  --text-secondary: #9ca3b4;
+  --text-muted: #5b6172;
+
+  --success: #34d399;
+  --warning: #ffb000;
+  --danger: #ff2d78;
+  --info: #5b8def;
+
+  /* Crimson HUD — default accent */
+  --accent: #ff1e2d;
+  --accent-dim: #a71c1e;
+  --accent-glow: rgba(255, 30, 45, 0.55);
+
+  --series-1: #ff1e2d;
+  --series-2: #4dd0e1;
+  --series-3: #ffb74d;
+  --series-4: #a78bfa;
+  --series-5: #34d399;
+  --series-6: #f06292;
+
+  --cut: 14px;
+  --cut-sm: 8px;
+  --glow: 0;
+}
+
+[data-palette="cyan"] {
+  --accent: #00f0ff;
+  --accent-dim: #00b8d4;
+  --accent-glow: rgba(0, 240, 255, 0.5);
+  --success: #22e089;
+  --series-1: #00f0ff;
+  --series-2: #ffb74d;
+  --series-3: #a78bfa;
+  --series-4: #34d399;
+  --series-5: #f06292;
+  --series-6: #5b8def;
+}
+
+[data-palette="copper"] {
+  --accent: #ff8a1e;
+  --accent-dim: #c2410c;
+  --accent-glow: rgba(255, 138, 30, 0.5);
+  --warning: #ffd23f;
+  --info: #4dd0e1;
+  --series-1: #ff8a1e;
+  --series-2: #4dd0e1;
+  --series-3: #a78bfa;
+  --series-4: #34d399;
+  --series-5: #f06292;
+  --series-6: #5b8def;
+}
+
+body {
+  background-color: var(--bg-base);
+  background-image:
+    radial-gradient(ellipse at top, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: auto, 40px 40px, 40px 40px;
+  color: var(--text-primary);
+  font-family: var(--font-rajdhani), system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+/* ---- Reusable HUD panel: angular notch + accent rim glow on state ---- */
+.hud-panel {
+  position: relative;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  clip-path: polygon(
+    var(--cut) 0,
+    100% 0,
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    0 100%,
+    0 var(--cut)
+  );
+  filter: drop-shadow(0 0 calc(12px * var(--glow)) var(--accent-glow));
+  transition: filter 0.15s ease-out, background 0.15s ease-out;
+}
+.hud-panel[data-status="down"] {
+  --glow: 1;
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--danger) 55%, transparent));
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* ---- uPlot dark theming ---- */
+.uplot, .uplot * { font-family: var(--font-jetbrains), monospace; }
+.u-axis { color: var(--text-muted); }
+.u-legend { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

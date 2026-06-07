@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Required by [LibraryImport] source generator for the kernel32 P/Invokes. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <UserSecretsId>dotnet-Heimdall.Agent-b57068d9-be9e-4c82-a79f-617f460af873</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Heimdall.Contracts\Heimdall.Contracts.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,22 @@
+# Local TimescaleDB for Heimdall. Run: docker compose up -d
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg17
+    container_name: heimdall-timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: heimdall
+      POSTGRES_PASSWORD: heimdall_dev_pw
+      POSTGRES_DB: heimdall
+    ports:
+      - "5432:5432"
+    volumes:
+      - heimdall-tsdb-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U heimdall -d heimdall"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  heimdall-tsdb-data:

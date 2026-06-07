@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Heimdall.Agent/Heimdall.Agent.csproj" />
+    <Project Path="src/Heimdall.Api/Heimdall.Api.csproj" />
+    <Project Path="src/Heimdall.Application/Heimdall.Application.csproj" />
+    <Project Path="src/Heimdall.Contracts/Heimdall.Contracts.csproj" />
+    <Project Path="src/Heimdall.Desktop/Heimdall.Desktop.csproj" />
+    <Project Path="src/Heimdall.Domain/Heimdall.Domain.csproj" />
+    <Project Path="src/Heimdall.Infrastructure/Heimdall.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Heimdall.ArchitectureTests/Heimdall.ArchitectureTests.csproj" />
+    <Project Path="tests/Heimdall.IntegrationTests/Heimdall.IntegrationTests.csproj" />
+    <Project Path="tests/Heimdall.UnitTests/Heimdall.UnitTests.csproj" />
+  </Folder>
+</Solution>

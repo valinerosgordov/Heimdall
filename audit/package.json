@@ -1,0 +1,10 @@
+{
+  "name": "heimdall-ui-audit",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Playwright visual + objective UI audit for the Heimdall dashboard",
+  "dependencies": {
+    "playwright": "^1.60.0"
+  }
+}

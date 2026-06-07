@@ -1,0 +1,39 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+artifacts/
+
+# Rider / VS
+.idea/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildlog
+
+# Env / secrets
+.env
+.env.local
+*.env
+
+# Local secrets — the API dev config holds the JWT secret, operator hash and enrollment key.
+# Copy appsettings.Development.json.example -> appsettings.Development.json and keep it local.
+src/Heimdall.Api/appsettings.Development.json
+src/Heimdall.Api/appsettings.Production.json
+
+# Audit tooling deps
+audit/node_modules/
+
+# Audit artifacts (screenshots/results are generated; keep the script + package.json)
+audit/results/
+
+# Deploy build output (republished by scripts/build-heimdall.ps1)
+dist/
+
+# OS
+Thumbs.db
+.DS_Store

@@ -1,0 +1,24 @@
+using System.Text.Json.Serialization;
+
+namespace Heimdall.Contracts;
+
+/// <summary>AOT-friendly source-generated serialization for all wire contracts. camelCase on the wire.</summary>
+[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+[JsonSerializable(typeof(MetricBatchRequest))]
+[JsonSerializable(typeof(IngestResponse))]
+[JsonSerializable(typeof(HostMetricsResponse))]
+[JsonSerializable(typeof(IReadOnlyList<HostSummaryDto>))]
+[JsonSerializable(typeof(EnrollRequest))]
+[JsonSerializable(typeof(EnrollResponse))]
+[JsonSerializable(typeof(CreateHealthCheckRequest))]
+[JsonSerializable(typeof(HealthCheckStatusDto))]
+[JsonSerializable(typeof(IReadOnlyList<HealthCheckStatusDto>))]
+[JsonSerializable(typeof(HealthCheckHistoryResponse))]
+[JsonSerializable(typeof(OverviewSnapshot))]
+[JsonSerializable(typeof(CreateAlertRuleRequest))]
+[JsonSerializable(typeof(AlertRuleDto))]
+[JsonSerializable(typeof(IReadOnlyList<AlertRuleDto>))]
+[JsonSerializable(typeof(IReadOnlyList<AlertDto>))]
+[JsonSerializable(typeof(LoginRequest))]
+[JsonSerializable(typeof(LoginResponse))]
+public sealed partial class HeimdallJsonContext : JsonSerializerContext;

@@ -1,0 +1,59 @@
+import { HealthCheckStatus } from "@/lib/api";
+import StatusPill, { StatusState } from "./StatusPill";
+
+function stateOf(check: HealthCheckStatus): StatusState {
+  if (check.isUp === null) return "idle";
+  return check.isUp ? "up" : "down";
+}
+
+export default function HealthBoard({
+  checks,
+  onDelete,
+}: {
+  checks: HealthCheckStatus[];
+  onDelete?: (id: string) => void;
+}) {
+  if (checks.length === 0) {
+    return <p className="text-sm text-muted">No monitors yet — add one above.</p>;
+  }
+
+  return (
+    <div className="hud-panel overflow-hidden">
+      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 border-b border-border px-4 py-2 text-[10px] uppercase tracking-widest text-faint">
+        <span>Target</span>
+        <span>Latency</span>
+        <span>Status</span>
+        <span></span>
+      </div>
+      {checks.map((check) => (
+        <div
+          key={check.id}
+          className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 border-b border-border px-4 py-3 last:border-b-0"
+          data-status={check.isUp === false ? "down" : undefined}
+        >
+          <div className="min-w-0">
+            <div className="truncate font-heading text-sm font-semibold text-ink">{check.name}</div>
+            <div className="truncate font-mono text-xs text-muted">
+              <span className="text-faint">{check.kind.toUpperCase()}</span> {check.target}
+            </div>
+          </div>
+          <div className="font-mono text-sm tabular-nums text-muted">
+            {check.latencyMs === null ? "--" : `${check.latencyMs.toFixed(0)} ms`}
+          </div>
+          <StatusPill state={stateOf(check)} />
+          {onDelete ? (
+            <button
+              onClick={() => onDelete(check.id)}
+              className="text-xs uppercase tracking-wider text-faint hover:text-danger"
+              title="Remove monitor"
+            >
+              ✕
+            </button>
+          ) : (
+            <span />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}

@@ -1,0 +1,28 @@
+{
+  "//": "Copy this file to appsettings.Development.json (gitignored). These are THROWAWAY local-dev values — change every secret before exposing Heimdall to any network. In production use User Secrets / Key Vault, never appsettings.",
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "ConnectionStrings": {
+    "Heimdall": "Host=localhost;Port=5432;Database=heimdall;Username=heimdall;Password=heimdall_dev_pw"
+  },
+  "Cors": {
+    "AllowedOrigins": [ "http://localhost:3100", "http://localhost:3000", "http://localhost:3001", "http://localhost:3002" ]
+  },
+  "Heimdall": {
+    "EnrollmentKey": "dev-local-enrollment-key-change-me",
+    "Auth": {
+      "Username": "admin",
+      "//PasswordSha256": "SHA-256 of the operator password. This default is SHA-256 of 'heimdall' -> login admin / heimdall. Generate your own: see README.",
+      "PasswordSha256": "77f1d1c04d32a84a569b4aed05ef453ec4f464fcac98de97bb2f5033df2c4a04"
+    },
+    "Jwt": {
+      "//Secret": "HS256 signing key. MUST be replaced with a long random value before any real use.",
+      "Secret": "heimdall-dev-only-jwt-signing-secret-change-me-please-0123456789",
+      "LifetimeHours": 8
+    }
+  }
+}
