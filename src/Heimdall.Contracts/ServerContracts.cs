@@ -63,6 +63,11 @@ public sealed record ServerDto
 
     /// <summary>Latest liveness of the linked health-check, if any.</summary>
     public bool? IsUp { get; init; }
+
+    // Auto-discovered by the agent.
+    public string? Os { get; init; }
+    public string? ListeningPorts { get; init; }
+    public long? LastDiscoveredAtUnixMs { get; init; }
 }
 
 /// <summary>A directed link between two servers (topology edge).</summary>
@@ -87,4 +92,18 @@ public sealed record InventoryResponse
 {
     public required IReadOnlyList<ServerDto> Servers { get; init; }
     public required IReadOnlyList<ServerLinkDto> Links { get; init; }
+}
+
+/// <summary>Agent-reported host inventory (auto-discovery) — upserts the matching server's discovered fields.</summary>
+public sealed record InventoryReportRequest
+{
+    public required string HostName { get; init; }
+    public string? Os { get; init; }
+    public int? CpuCores { get; init; }
+    public double? RamGb { get; init; }
+    public double? DiskGb { get; init; }
+    public long? UptimeSeconds { get; init; }
+
+    /// <summary>Comma-separated listening TCP ports, e.g. "22,80,443,5432".</summary>
+    public string? ListeningPorts { get; init; }
 }

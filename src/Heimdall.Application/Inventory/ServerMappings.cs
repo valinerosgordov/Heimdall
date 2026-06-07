@@ -28,7 +28,9 @@ internal static class ServerMappings
         s.Id.Value, s.Name, s.Provider, s.IpAddress, s.Hostname, s.Role,
         s.CpuCores, s.RamGb, s.DiskGb, s.Location,
         s.MonthlyCost, s.Currency, s.PaidUntil, s.UserCount, s.Notes,
-        s.LinkedHealthCheckId, s.LinkedHostName, IsUp: null);
+        s.LinkedHealthCheckId, s.LinkedHostName,
+        s.Os, s.ListeningPorts, s.LastDiscoveredAt,
+        IsUp: null);
 
     public static ServerDto ToDto(ServerRecord r, DateOnly today)
     {
@@ -54,6 +56,9 @@ internal static class ServerMappings
             LinkedHealthCheckId = r.LinkedHealthCheckId,
             LinkedHostName = r.LinkedHostName,
             IsUp = r.IsUp,
+            Os = r.Os,
+            ListeningPorts = r.ListeningPorts,
+            LastDiscoveredAtUnixMs = r.LastDiscoveredAt?.ToUnixTimeMilliseconds(),
         };
     }
 }

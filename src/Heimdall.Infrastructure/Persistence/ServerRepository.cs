@@ -8,16 +8,21 @@ namespace Heimdall.Infrastructure.Persistence;
 
 internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRepository
 {
+    private const string Columns =
+        "id, name, provider, ip_address, hostname, role, cpu_cores, ram_gb, disk_gb, location, " +
+        "monthly_cost, currency, paid_until, user_count, notes, linked_healthcheck_id, linked_host_name, " +
+        "os, listening_ports, last_discovered_at, created_at, updated_at";
+
     public async Task AddAsync(Server server, CancellationToken cancellationToken)
     {
         const string sql =
             """
             INSERT INTO servers (id, name, provider, ip_address, hostname, role, cpu_cores, ram_gb, disk_gb, location,
                                  monthly_cost, currency, paid_until, user_count, notes, linked_healthcheck_id, linked_host_name,
-                                 created_at, updated_at)
+                                 os, listening_ports, last_discovered_at, created_at, updated_at)
             VALUES (@id, @name, @provider, @ipAddress, @hostname, @role, @cpuCores, @ramGb, @diskGb, @location,
                     @monthlyCost, @currency, @paidUntil, @userCount, @notes, @linkedHealthCheckId, @linkedHostName,
-                    @createdAt, @updatedAt);
+                    @os, @listeningPorts, @lastDiscoveredAt, @createdAt, @updatedAt);
             """;
 
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
@@ -26,18 +31,27 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
 
     public async Task<Server?> GetAsync(ServerId id, CancellationToken cancellationToken)
     {
-        const string sql =
-            """
-            SELECT id, name, provider, ip_address, hostname, role, cpu_cores, ram_gb, disk_gb, location,
-                   monthly_cost, currency, paid_until, user_count, notes, linked_healthcheck_id, linked_host_name,
-                   created_at, updated_at
-            FROM servers
-            WHERE id = @id;
-            """;
+        var sql = $"SELECT {Columns} FROM servers WHERE id = @id;";
 
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         var row = await connection.QuerySingleOrDefaultAsync<ServerRow>(new CommandDefinition(
             sql, new { id = id.Value }, cancellationToken: cancellationToken));
+        return row is null ? null : ToEntity(row);
+    }
+
+    public async Task<Server?> FindByHostNameAsync(string hostName, CancellationToken cancellationToken)
+    {
+        var sql =
+            $"""
+            SELECT {Columns} FROM servers
+            WHERE linked_host_name = @h OR name = @h
+            ORDER BY (linked_host_name = @h) DESC
+            LIMIT 1;
+            """;
+
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var row = await connection.QuerySingleOrDefaultAsync<ServerRow>(new CommandDefinition(
+            sql, new { h = hostName }, cancellationToken: cancellationToken));
         return row is null ? null : ToEntity(row);
     }
 
@@ -50,6 +64,7 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
                 cpu_cores = @cpuCores, ram_gb = @ramGb, disk_gb = @diskGb, location = @location,
                 monthly_cost = @monthlyCost, currency = @currency, paid_until = @paidUntil, user_count = @userCount,
                 notes = @notes, linked_healthcheck_id = @linkedHealthCheckId, linked_host_name = @linkedHostName,
+                os = @os, listening_ports = @listeningPorts, last_discovered_at = @lastDiscoveredAt,
                 updated_at = @updatedAt
             WHERE id = @id;
             """;
@@ -65,6 +80,7 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
             """
             SELECT s.id, s.name, s.provider, s.ip_address, s.hostname, s.role, s.cpu_cores, s.ram_gb, s.disk_gb, s.location,
                    s.monthly_cost, s.currency, s.paid_until, s.user_count, s.notes, s.linked_healthcheck_id, s.linked_host_name,
+                   s.os, s.listening_ports, s.last_discovered_at,
                    r.is_up
             FROM servers s
             LEFT JOIN LATERAL (
@@ -85,7 +101,9 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
             .. rows.Select(r => new ServerRecord(
                 r.Id, r.Name, r.Provider, r.IpAddress, r.Hostname, r.Role,
                 r.CpuCores, r.RamGb, r.DiskGb, r.Location, r.MonthlyCost, r.Currency, r.PaidUntil, r.UserCount, r.Notes,
-                r.LinkedHealthCheckId, r.LinkedHostName, r.IsUp)),
+                r.LinkedHealthCheckId, r.LinkedHostName,
+                r.Os, r.ListeningPorts, AsUtc(r.LastDiscoveredAt),
+                r.IsUp)),
         ];
     }
 
@@ -154,6 +172,9 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
         notes = s.Notes,
         linkedHealthCheckId = s.LinkedHealthCheckId,
         linkedHostName = s.LinkedHostName,
+        os = s.Os,
+        listeningPorts = s.ListeningPorts,
+        lastDiscoveredAt = s.LastDiscoveredAt?.UtcDateTime,
         createdAt = s.CreatedAt.UtcDateTime,
         updatedAt = s.UpdatedAt.UtcDateTime,
     };
@@ -161,20 +182,27 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
     private static Server ToEntity(ServerRow r) => Server.FromStorage(
         new ServerId(r.Id), r.Name, r.Provider, r.IpAddress, r.Hostname, r.Role,
         r.CpuCores, r.RamGb, r.DiskGb, r.Location, r.MonthlyCost, r.Currency, r.PaidUntil, r.UserCount, r.Notes,
-        r.LinkedHealthCheckId, r.LinkedHostName, AsUtc(r.CreatedAt), AsUtc(r.UpdatedAt));
+        r.LinkedHealthCheckId, r.LinkedHostName,
+        r.Os, r.ListeningPorts, AsUtc(r.LastDiscoveredAt),
+        AsUtc(r.CreatedAt), AsUtc(r.UpdatedAt));
 
     private static DateTimeOffset AsUtc(DateTime value) => new(DateTime.SpecifyKind(value, DateTimeKind.Utc));
+
+    private static DateTimeOffset? AsUtc(DateTime? value)
+        => value is null ? null : new DateTimeOffset(DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
 
     private sealed record ServerRow(
         Guid Id, string Name, string? Provider, string? IpAddress, string? Hostname, string? Role,
         int? CpuCores, double? RamGb, double? DiskGb, string? Location, decimal? MonthlyCost, string? Currency,
         DateOnly? PaidUntil, int? UserCount, string? Notes, Guid? LinkedHealthCheckId, string? LinkedHostName,
+        string? Os, string? ListeningPorts, DateTime? LastDiscoveredAt,
         DateTime CreatedAt, DateTime UpdatedAt);
 
     private sealed record StatusRow(
         Guid Id, string Name, string? Provider, string? IpAddress, string? Hostname, string? Role,
         int? CpuCores, double? RamGb, double? DiskGb, string? Location, decimal? MonthlyCost, string? Currency,
-        DateOnly? PaidUntil, int? UserCount, string? Notes, Guid? LinkedHealthCheckId, string? LinkedHostName, bool? IsUp);
+        DateOnly? PaidUntil, int? UserCount, string? Notes, Guid? LinkedHealthCheckId, string? LinkedHostName,
+        string? Os, string? ListeningPorts, DateTime? LastDiscoveredAt, bool? IsUp);
 
     private sealed record LinkRow(Guid Id, Guid FromId, Guid ToId, string Kind);
 }

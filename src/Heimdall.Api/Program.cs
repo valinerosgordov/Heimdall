@@ -44,6 +44,7 @@ builder.Services.AddScoped<UpdateServerHandler>();
 builder.Services.AddScoped<DeleteServerHandler>();
 builder.Services.AddScoped<CreateServerLinkHandler>();
 builder.Services.AddScoped<DeleteServerLinkHandler>();
+builder.Services.AddScoped<ReportInventoryHandler>();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

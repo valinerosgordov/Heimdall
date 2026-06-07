@@ -187,6 +187,9 @@ export interface ServerDto {
   linkedHealthCheckId: string | null;
   linkedHostName: string | null;
   isUp: boolean | null;
+  os: string | null;
+  listeningPorts: string | null;
+  lastDiscoveredAtUnixMs: number | null;
 }
 
 export interface ServerLinkDto {

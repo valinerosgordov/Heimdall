@@ -30,4 +30,5 @@ namespace Heimdall.Contracts;
 [JsonSerializable(typeof(IReadOnlyList<ServerLinkDto>))]
 [JsonSerializable(typeof(CreateServerLinkRequest))]
 [JsonSerializable(typeof(InventoryResponse))]
+[JsonSerializable(typeof(InventoryReportRequest))]
 public sealed partial class HeimdallJsonContext : JsonSerializerContext;

@@ -46,6 +46,14 @@ function DueBadge({ days }: { days: number | null }) {
   );
 }
 
+function timeAgo(unixMs: number): string {
+  const s = Math.max(0, Math.floor((Date.now() - unixMs) / 1000));
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
 function Field({ label, value, className = "" }: { label: string; value?: string | null; className?: string }) {
   return (
     <div className={className}>
@@ -299,6 +307,8 @@ export default function InfraPage() {
                   <Field label="Specs" value={specsText(s)} />
                   <Field label="Users" value={s.userCount?.toString()} />
                   <Field label="Role" value={s.role} className="col-span-2" />
+                  {s.os && <Field label="OS" value={s.os} className="col-span-2" />}
+                  {s.listeningPorts && <Field label="Ports" value={s.listeningPorts} className="col-span-2" />}
                 </div>
 
                 <div className="mt-3 flex items-center justify-between border-t border-border pt-2">
@@ -309,6 +319,11 @@ export default function InfraPage() {
                   </span>
                 </div>
 
+                {s.lastDiscoveredAtUnixMs && (
+                  <p className="mt-2 text-[10px] uppercase tracking-widest text-faint">
+                    ⟳ auto-discovered {timeAgo(s.lastDiscoveredAtUnixMs)}
+                  </p>
+                )}
                 {s.notes && <p className="mt-2 text-xs text-muted">{s.notes}</p>}
               </div>
             ))}

@@ -69,4 +69,27 @@ internal sealed class HeimdallApiClient(HttpClient httpClient, ILogger<HeimdallA
             return PushOutcome.Failed;
         }
     }
+
+    /// <summary>Reports a host inventory snapshot (auto-discovery). Returns true on success.</summary>
+    public async Task<bool> ReportInventoryAsync(InventoryReportRequest report, string agentKey, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "api/ingest/inventory")
+            {
+                Content = JsonContent.Create(report, HeimdallJsonContext.Default.InventoryReportRequest),
+            };
+            request.Headers.Add("X-Heimdall-Key", agentKey);
+
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                logger.LogWarning("Inventory report returned status {StatusCode}.", (int)response.StatusCode);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Failed to report inventory to {BaseAddress}.", httpClient.BaseAddress);
+            return false;
+        }
+    }
 }

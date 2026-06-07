@@ -19,4 +19,7 @@ public readonly record struct ServerRecord(
     string? Notes,
     Guid? LinkedHealthCheckId,
     string? LinkedHostName,
+    string? Os,
+    string? ListeningPorts,
+    DateTimeOffset? LastDiscoveredAt,
     bool? IsUp);

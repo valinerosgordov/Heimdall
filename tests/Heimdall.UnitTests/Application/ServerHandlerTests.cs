@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Heimdall.Application.Abstractions;
 using Heimdall.Application.Inventory;
+using Heimdall.Application.Security;
 using Heimdall.Contracts;
+using Heimdall.Domain.Hosts;
 using Heimdall.Domain.Inventory;
 using Heimdall.Domain.SharedKernel;
 using Heimdall.UnitTests.TestSupport;
@@ -74,7 +76,8 @@ public sealed class ServerHandlerTests
         var repo = Substitute.For<IServerRepository>();
         var record = new ServerRecord(
             Guid.NewGuid(), "web", null, null, null, null, null, null, null, null,
-            null, null, new DateOnly(2026, 1, 20), null, null, null, null, true);
+            null, null, new DateOnly(2026, 1, 20), null, null, null, null,
+            null, null, null, true);
         repo.ListWithStatusAsync(Arg.Any<CancellationToken>()).Returns([record]);
         repo.ListLinksAsync(Arg.Any<CancellationToken>()).Returns([]);
         var handler = new ListInventoryHandler(repo, new FixedTimeProvider(Now));
@@ -84,5 +87,42 @@ public sealed class ServerHandlerTests
         result.Servers.Should().HaveCount(1);
         result.Servers[0].DaysUntilDue.Should().Be(10);
         result.Servers[0].IsUp.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ReportInventory_creates_server_when_none_matches()
+    {
+        var hosts = Substitute.For<IHostRepository>();
+        var host = MonitoredHost.Register("box", Now).Value;
+        host.AssignAgentKey(KeyHasher.Hash("k"));
+        hosts.GetByNameAsync("box", Arg.Any<CancellationToken>()).Returns(host);
+
+        var servers = Substitute.For<IServerRepository>();
+        servers.FindByHostNameAsync("box", Arg.Any<CancellationToken>()).Returns((Server?)null);
+        var handler = new ReportInventoryHandler(hosts, servers, new FixedTimeProvider(Now));
+
+        var result = await handler.HandleAsync(
+            new InventoryReportRequest { HostName = "box", Os = "Linux", CpuCores = 4 }, "k", default);
+
+        result.IsSuccess.Should().BeTrue();
+        await servers.Received(1).AddAsync(Arg.Any<Server>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReportInventory_rejects_bad_agent_key()
+    {
+        var hosts = Substitute.For<IHostRepository>();
+        var host = MonitoredHost.Register("box", Now).Value;
+        host.AssignAgentKey(KeyHasher.Hash("right"));
+        hosts.GetByNameAsync("box", Arg.Any<CancellationToken>()).Returns(host);
+
+        var servers = Substitute.For<IServerRepository>();
+        var handler = new ReportInventoryHandler(hosts, servers, new FixedTimeProvider(Now));
+
+        var result = await handler.HandleAsync(new InventoryReportRequest { HostName = "box" }, "wrong", default);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Type.Should().Be(ErrorType.Unauthorized);
+        await servers.DidNotReceive().AddAsync(Arg.Any<Server>(), Arg.Any<CancellationToken>());
     }
 }

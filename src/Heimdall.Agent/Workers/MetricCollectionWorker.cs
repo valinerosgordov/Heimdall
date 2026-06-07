@@ -24,6 +24,7 @@ internal sealed class MetricCollectionWorker(
 
     private readonly HeimdallAgentOptions _options = options.Value;
     private readonly Queue<MetricBatchRequest> _pending = new();
+    private DateTimeOffset _lastInventory = DateTimeOffset.MinValue;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -62,6 +63,7 @@ internal sealed class MetricCollectionWorker(
                 }
 
                 await FlushAsync(agentKey, stoppingToken);
+                await ReportInventoryIfDueAsync(agentKey, stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -103,5 +105,17 @@ internal sealed class MetricCollectionWorker(
                 return;
             }
         }
+    }
+
+    // Auto-discovery: report a host inventory snapshot on the first tick, then hourly.
+    private async Task ReportInventoryIfDueAsync(string agentKey, CancellationToken cancellationToken)
+    {
+        var now = clock.GetUtcNow();
+        if (now - _lastInventory < TimeSpan.FromHours(1))
+            return;
+
+        var report = InventoryCollector.Collect(_options.HostName);
+        if (await apiClient.ReportInventoryAsync(report, agentKey, cancellationToken))
+            _lastInventory = now;
     }
 }

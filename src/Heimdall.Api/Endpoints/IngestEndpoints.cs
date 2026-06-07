@@ -1,4 +1,5 @@
 using Heimdall.Api.Common;
+using Heimdall.Application.Inventory;
 using Heimdall.Application.Metrics;
 using Heimdall.Contracts;
 
@@ -21,6 +22,17 @@ public static class IngestEndpoints
             var agentKey = httpRequest.Headers[AgentKeyHeader].ToString();
             var result = await handler.HandleAsync(request, agentKey, cancellationToken);
             return result.ToHttpResult(response => TypedResults.Ok(response));
+        });
+
+        group.MapPost("/inventory", async (
+            InventoryReportRequest request,
+            HttpRequest httpRequest,
+            ReportInventoryHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var agentKey = httpRequest.Headers[AgentKeyHeader].ToString();
+            var result = await handler.HandleAsync(request, agentKey, cancellationToken);
+            return result.ToHttpResult(() => TypedResults.Ok());
         });
 
         return app;

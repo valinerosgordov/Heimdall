@@ -9,6 +9,9 @@ public interface IServerRepository
 
     Task<Server?> GetAsync(ServerId id, CancellationToken cancellationToken);
 
+    /// <summary>Finds the server bound to an agent host (linked_host_name, else name) for auto-discovery upsert.</summary>
+    Task<Server?> FindByHostNameAsync(string hostName, CancellationToken cancellationToken);
+
     Task<bool> UpdateAsync(Server server, CancellationToken cancellationToken);
 
     /// <summary>All servers with the latest liveness of their linked health-check, for the inventory board.</summary>

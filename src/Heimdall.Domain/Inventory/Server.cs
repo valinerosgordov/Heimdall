@@ -30,6 +30,12 @@ public sealed class Server : AggregateRoot<ServerId>
     public string? Notes { get; private set; }
     public Guid? LinkedHealthCheckId { get; private set; }
     public string? LinkedHostName { get; private set; }
+
+    // Auto-discovered (reported by the agent; never typed by hand).
+    public string? Os { get; private set; }
+    public string? ListeningPorts { get; private set; }
+    public DateTimeOffset? LastDiscoveredAt { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
@@ -41,6 +47,34 @@ public sealed class Server : AggregateRoot<ServerId>
     }
 
     public Result Update(ServerDraft draft, DateTimeOffset now) => Apply(draft, now);
+
+    /// <summary>Creates a server straight from an agent inventory report (auto-discovered host).</summary>
+    public static Server CreateDiscovered(
+        string hostName, string? os, int? cpuCores, double? ramGb, double? diskGb, string? listeningPorts, DateTimeOffset now)
+    {
+        var server = new Server(ServerId.New(), now)
+        {
+            Name = WebUtility.HtmlEncode(hostName.Trim()),
+            LinkedHostName = WebUtility.HtmlEncode(hostName.Trim()),
+        };
+        server.ApplyDiscovery(os, cpuCores, ramGb, diskGb, hostName, listeningPorts, now);
+        return server;
+    }
+
+    /// <summary>Updates only auto-discovered fields; manual fields (cost, paid-until, notes, role…) are preserved.</summary>
+    public void ApplyDiscovery(
+        string? os, int? cpuCores, double? ramGb, double? diskGb, string? hostname, string? listeningPorts, DateTimeOffset now)
+    {
+        Os = Clean(os, 200);
+        if (cpuCores is >= 0) CpuCores = cpuCores;
+        if (ramGb is >= 0) RamGb = ramGb;
+        if (diskGb is >= 0) DiskGb = diskGb;
+        var cleanHost = Clean(hostname);
+        if (cleanHost is not null) Hostname = cleanHost;
+        ListeningPorts = Clean(listeningPorts, MaxTextLength);
+        LastDiscoveredAt = now;
+        UpdatedAt = now;
+    }
 
     private Result Apply(ServerDraft d, DateTimeOffset now)
     {
@@ -101,6 +135,9 @@ public sealed class Server : AggregateRoot<ServerId>
         string? notes,
         Guid? linkedHealthCheckId,
         string? linkedHostName,
+        string? os,
+        string? listeningPorts,
+        DateTimeOffset? lastDiscoveredAt,
         DateTimeOffset createdAt,
         DateTimeOffset updatedAt)
         => new(id, createdAt)
@@ -121,6 +158,9 @@ public sealed class Server : AggregateRoot<ServerId>
             Notes = notes,
             LinkedHealthCheckId = linkedHealthCheckId,
             LinkedHostName = linkedHostName,
+            Os = os,
+            ListeningPorts = listeningPorts,
+            LastDiscoveredAt = lastDiscoveredAt,
             UpdatedAt = updatedAt,
         };
 }

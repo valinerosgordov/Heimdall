@@ -117,6 +117,10 @@ internal sealed class DatabaseInitializer(NpgsqlDataSource dataSource, ILogger<D
         CREATE INDEX IF NOT EXISTS ix_server_links_from ON server_links (from_id);
         CREATE INDEX IF NOT EXISTS ix_servers_paid_until ON servers (paid_until);
 
+        ALTER TABLE servers ADD COLUMN IF NOT EXISTS os                text        NULL;
+        ALTER TABLE servers ADD COLUMN IF NOT EXISTS listening_ports   text        NULL;
+        ALTER TABLE servers ADD COLUMN IF NOT EXISTS last_discovered_at timestamptz NULL;
+
         CREATE TABLE IF NOT EXISTS app_config (
             key   text PRIMARY KEY,
             value text NOT NULL
