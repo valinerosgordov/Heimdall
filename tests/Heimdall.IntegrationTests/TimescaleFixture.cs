@@ -18,6 +18,7 @@ public sealed class TimescaleFixture : IAsyncLifetime
     public async Task InitializeAsync()
     {
         DefaultTypeMap.MatchNamesWithUnderscores = true;
+        SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
         await _container.StartAsync();
         DataSource = new NpgsqlDataSourceBuilder(_container.GetConnectionString()).Build();
         await new DatabaseInitializer(DataSource, NullLogger<DatabaseInitializer>.Instance)

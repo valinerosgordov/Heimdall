@@ -21,12 +21,16 @@ public static class DependencyInjection
         // Map snake_case columns (created_at) to PascalCase members (CreatedAt).
         DefaultTypeMap.MatchNamesWithUnderscores = true;
 
+        // Dapper 2.x cannot bind DateOnly parameters out of the box (servers.paid_until).
+        SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
+
         var dataSource = new NpgsqlDataSourceBuilder(connectionString).Build();
         services.AddSingleton(dataSource);
 
         services.AddSingleton<IHostRepository, HostRepository>();
         services.AddSingleton<IMetricRepository, MetricRepository>();
         services.AddSingleton<IHealthCheckRepository, HealthCheckRepository>();
+        services.AddSingleton<IServerRepository, ServerRepository>();
         services.AddHostedService<DatabaseInitializer>();
 
         // Health-check probes + scheduler.

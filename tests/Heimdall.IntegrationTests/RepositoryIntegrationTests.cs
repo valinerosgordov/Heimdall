@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Heimdall.Domain.HealthChecks;
 using Heimdall.Domain.Hosts;
+using Heimdall.Domain.Inventory;
 using Heimdall.Domain.Metrics;
 using Heimdall.Infrastructure.Persistence;
 
@@ -69,5 +70,56 @@ public sealed class HealthCheckRepositoryIntegrationTests(TimescaleFixture fixtu
         status.LatencyMs.Should().Be(12.5);
 
         (await repository.DeleteAsync(target.Id, CancellationToken.None)).Should().BeTrue();
+    }
+}
+
+[Collection(nameof(TimescaleCollection))]
+public sealed class ServerRepositoryIntegrationTests(TimescaleFixture fixture)
+{
+    private static ServerDraft MinimalDraft(string name)
+        => new(name, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+
+    [Fact]
+    public async Task Add_with_paid_until_then_list_and_get_roundtrips()
+    {
+        var repository = new ServerRepository(fixture.DataSource);
+        var now = DateTimeOffset.UtcNow;
+        var due = DateOnly.FromDateTime(now.UtcDateTime).AddDays(14);
+        var draft = new ServerDraft(
+            $"it-srv-{Guid.NewGuid():N}", "Timeweb", "10.0.0.9", "host", "Prod",
+            2, 4, 50, "MSK", 600m, "RUB", due, 17, "note", null, null);
+        var server = Server.Create(draft, now).Value;
+
+        await repository.AddAsync(server, CancellationToken.None);
+
+        var loaded = (await repository.ListWithStatusAsync(CancellationToken.None)).Single(s => s.Id == server.Id.Value);
+        loaded.PaidUntil.Should().Be(due);
+        loaded.MonthlyCost.Should().Be(600m);
+        loaded.UserCount.Should().Be(17);
+
+        var fetched = await repository.GetAsync(server.Id, CancellationToken.None);
+        fetched.Should().NotBeNull();
+        fetched!.PaidUntil.Should().Be(due);
+
+        (await repository.DeleteAsync(server.Id, CancellationToken.None)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Link_add_list_then_delete()
+    {
+        var repository = new ServerRepository(fixture.DataSource);
+        var now = DateTimeOffset.UtcNow;
+        var a = Server.Create(MinimalDraft($"it-a-{Guid.NewGuid():N}"), now).Value;
+        var b = Server.Create(MinimalDraft($"it-b-{Guid.NewGuid():N}"), now).Value;
+        await repository.AddAsync(a, CancellationToken.None);
+        await repository.AddAsync(b, CancellationToken.None);
+
+        var link = ServerLink.Create(a.Id.Value, b.Id.Value, "proxy").Value;
+        await repository.AddLinkAsync(link, CancellationToken.None);
+
+        var links = await repository.ListLinksAsync(CancellationToken.None);
+        links.Should().Contain(l => l.Id == link.Id && l.Kind == "proxy");
+
+        (await repository.DeleteLinkAsync(link.Id, CancellationToken.None)).Should().BeTrue();
     }
 }

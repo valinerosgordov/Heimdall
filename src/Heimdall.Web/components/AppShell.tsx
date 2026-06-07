@@ -77,6 +77,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
             <nav className="flex gap-3 text-xs font-semibold uppercase tracking-wider sm:gap-4">
               <NavLink href="/" label="Overview" pathname={pathname} />
+              <NavLink href="/infra" label="Infra" pathname={pathname} />
               <NavLink href="/alerts" label="Alerts" pathname={pathname} />
             </nav>
           </div>

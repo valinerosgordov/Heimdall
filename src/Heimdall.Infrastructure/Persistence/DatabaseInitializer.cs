@@ -84,6 +84,38 @@ internal sealed class DatabaseInitializer(NpgsqlDataSource dataSource, ILogger<D
 
         CREATE INDEX IF NOT EXISTS ix_alerts_active ON alerts (rule_id, host_name) WHERE status = 'Firing';
         CREATE INDEX IF NOT EXISTS ix_alerts_started ON alerts (started_at DESC);
+
+        CREATE TABLE IF NOT EXISTS servers (
+            id                    uuid             PRIMARY KEY,
+            name                  text             NOT NULL,
+            provider              text             NULL,
+            ip_address            text             NULL,
+            hostname              text             NULL,
+            role                  text             NULL,
+            cpu_cores             integer          NULL,
+            ram_gb                double precision NULL,
+            disk_gb               double precision NULL,
+            location              text             NULL,
+            monthly_cost          numeric          NULL,
+            currency              text             NULL,
+            paid_until            date             NULL,
+            user_count            integer          NULL,
+            notes                 text             NULL,
+            linked_healthcheck_id uuid             NULL,
+            linked_host_name      text             NULL,
+            created_at            timestamptz      NOT NULL,
+            updated_at            timestamptz      NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS server_links (
+            id      uuid PRIMARY KEY,
+            from_id uuid NOT NULL,
+            to_id   uuid NOT NULL,
+            kind    text NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS ix_server_links_from ON server_links (from_id);
+        CREATE INDEX IF NOT EXISTS ix_servers_paid_until ON servers (paid_until);
         """;
 
     // Retention policies run separately and tolerantly — a TimescaleDB version quirk must not block startup.

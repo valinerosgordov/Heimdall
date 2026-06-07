@@ -1,0 +1,180 @@
+using Dapper;
+using Heimdall.Application.Abstractions;
+using Heimdall.Application.Inventory;
+using Heimdall.Domain.Inventory;
+using Npgsql;
+
+namespace Heimdall.Infrastructure.Persistence;
+
+internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRepository
+{
+    public async Task AddAsync(Server server, CancellationToken cancellationToken)
+    {
+        const string sql =
+            """
+            INSERT INTO servers (id, name, provider, ip_address, hostname, role, cpu_cores, ram_gb, disk_gb, location,
+                                 monthly_cost, currency, paid_until, user_count, notes, linked_healthcheck_id, linked_host_name,
+                                 created_at, updated_at)
+            VALUES (@id, @name, @provider, @ipAddress, @hostname, @role, @cpuCores, @ramGb, @diskGb, @location,
+                    @monthlyCost, @currency, @paidUntil, @userCount, @notes, @linkedHealthCheckId, @linkedHostName,
+                    @createdAt, @updatedAt);
+            """;
+
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await connection.ExecuteAsync(new CommandDefinition(sql, ToParams(server), cancellationToken: cancellationToken));
+    }
+
+    public async Task<Server?> GetAsync(ServerId id, CancellationToken cancellationToken)
+    {
+        const string sql =
+            """
+            SELECT id, name, provider, ip_address, hostname, role, cpu_cores, ram_gb, disk_gb, location,
+                   monthly_cost, currency, paid_until, user_count, notes, linked_healthcheck_id, linked_host_name,
+                   created_at, updated_at
+            FROM servers
+            WHERE id = @id;
+            """;
+
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var row = await connection.QuerySingleOrDefaultAsync<ServerRow>(new CommandDefinition(
+            sql, new { id = id.Value }, cancellationToken: cancellationToken));
+        return row is null ? null : ToEntity(row);
+    }
+
+    public async Task<bool> UpdateAsync(Server server, CancellationToken cancellationToken)
+    {
+        const string sql =
+            """
+            UPDATE servers SET
+                name = @name, provider = @provider, ip_address = @ipAddress, hostname = @hostname, role = @role,
+                cpu_cores = @cpuCores, ram_gb = @ramGb, disk_gb = @diskGb, location = @location,
+                monthly_cost = @monthlyCost, currency = @currency, paid_until = @paidUntil, user_count = @userCount,
+                notes = @notes, linked_healthcheck_id = @linkedHealthCheckId, linked_host_name = @linkedHostName,
+                updated_at = @updatedAt
+            WHERE id = @id;
+            """;
+
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var affected = await connection.ExecuteAsync(new CommandDefinition(sql, ToParams(server), cancellationToken: cancellationToken));
+        return affected > 0;
+    }
+
+    public async Task<IReadOnlyList<ServerRecord>> ListWithStatusAsync(CancellationToken cancellationToken)
+    {
+        const string sql =
+            """
+            SELECT s.id, s.name, s.provider, s.ip_address, s.hostname, s.role, s.cpu_cores, s.ram_gb, s.disk_gb, s.location,
+                   s.monthly_cost, s.currency, s.paid_until, s.user_count, s.notes, s.linked_healthcheck_id, s.linked_host_name,
+                   r.is_up
+            FROM servers s
+            LEFT JOIN LATERAL (
+                SELECT is_up
+                FROM healthcheck_results r
+                WHERE r.target_id = s.linked_healthcheck_id
+                ORDER BY time DESC
+                LIMIT 1
+            ) r ON s.linked_healthcheck_id IS NOT NULL
+            ORDER BY s.paid_until NULLS LAST, s.name;
+            """;
+
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var rows = await connection.QueryAsync<StatusRow>(new CommandDefinition(sql, cancellationToken: cancellationToken));
+
+        return
+        [
+            .. rows.Select(r => new ServerRecord(
+                r.Id, r.Name, r.Provider, r.IpAddress, r.Hostname, r.Role,
+                r.CpuCores, r.RamGb, r.DiskGb, r.Location, r.MonthlyCost, r.Currency, r.PaidUntil, r.UserCount, r.Notes,
+                r.LinkedHealthCheckId, r.LinkedHostName, r.IsUp)),
+        ];
+    }
+
+    public async Task<bool> DeleteAsync(ServerId id, CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+
+        await connection.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM server_links WHERE from_id = @id OR to_id = @id;",
+            new { id = id.Value },
+            cancellationToken: cancellationToken));
+
+        var affected = await connection.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM servers WHERE id = @id;",
+            new { id = id.Value },
+            cancellationToken: cancellationToken));
+
+        return affected > 0;
+    }
+
+    public async Task AddLinkAsync(ServerLink link, CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await connection.ExecuteAsync(new CommandDefinition(
+            "INSERT INTO server_links (id, from_id, to_id, kind) VALUES (@id, @fromId, @toId, @kind);",
+            new { id = link.Id, fromId = link.From.Value, toId = link.To.Value, kind = link.Kind },
+            cancellationToken: cancellationToken));
+    }
+
+    public async Task<bool> DeleteLinkAsync(Guid linkId, CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var affected = await connection.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM server_links WHERE id = @id;",
+            new { id = linkId },
+            cancellationToken: cancellationToken));
+        return affected > 0;
+    }
+
+    public async Task<IReadOnlyList<ServerLink>> ListLinksAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var rows = await connection.QueryAsync<LinkRow>(new CommandDefinition(
+            "SELECT id, from_id, to_id, kind FROM server_links;",
+            cancellationToken: cancellationToken));
+
+        return [.. rows.Select(r => ServerLink.FromStorage(r.Id, r.FromId, r.ToId, r.Kind))];
+    }
+
+    private static object ToParams(Server s) => new
+    {
+        id = s.Id.Value,
+        name = s.Name,
+        provider = s.Provider,
+        ipAddress = s.IpAddress,
+        hostname = s.Hostname,
+        role = s.Role,
+        cpuCores = s.CpuCores,
+        ramGb = s.RamGb,
+        diskGb = s.DiskGb,
+        location = s.Location,
+        monthlyCost = s.MonthlyCost,
+        currency = s.Currency,
+        paidUntil = s.PaidUntil,
+        userCount = s.UserCount,
+        notes = s.Notes,
+        linkedHealthCheckId = s.LinkedHealthCheckId,
+        linkedHostName = s.LinkedHostName,
+        createdAt = s.CreatedAt.UtcDateTime,
+        updatedAt = s.UpdatedAt.UtcDateTime,
+    };
+
+    private static Server ToEntity(ServerRow r) => Server.FromStorage(
+        new ServerId(r.Id), r.Name, r.Provider, r.IpAddress, r.Hostname, r.Role,
+        r.CpuCores, r.RamGb, r.DiskGb, r.Location, r.MonthlyCost, r.Currency, r.PaidUntil, r.UserCount, r.Notes,
+        r.LinkedHealthCheckId, r.LinkedHostName, AsUtc(r.CreatedAt), AsUtc(r.UpdatedAt));
+
+    private static DateTimeOffset AsUtc(DateTime value) => new(DateTime.SpecifyKind(value, DateTimeKind.Utc));
+
+    private sealed record ServerRow(
+        Guid Id, string Name, string? Provider, string? IpAddress, string? Hostname, string? Role,
+        int? CpuCores, double? RamGb, double? DiskGb, string? Location, decimal? MonthlyCost, string? Currency,
+        DateOnly? PaidUntil, int? UserCount, string? Notes, Guid? LinkedHealthCheckId, string? LinkedHostName,
+        DateTime CreatedAt, DateTime UpdatedAt);
+
+    private sealed record StatusRow(
+        Guid Id, string Name, string? Provider, string? IpAddress, string? Hostname, string? Role,
+        int? CpuCores, double? RamGb, double? DiskGb, string? Location, decimal? MonthlyCost, string? Currency,
+        DateOnly? PaidUntil, int? UserCount, string? Notes, Guid? LinkedHealthCheckId, string? LinkedHostName, bool? IsUp);
+
+    private sealed record LinkRow(Guid Id, Guid FromId, Guid ToId, string Kind);
+}

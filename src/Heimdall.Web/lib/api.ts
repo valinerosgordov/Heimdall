@@ -158,3 +158,109 @@ export async function createHealthCheck(input: CreateHealthCheckInput): Promise<
 export async function deleteHealthCheck(id: string): Promise<void> {
   await authFetch(`${API_BASE}/api/healthchecks/${id}`, { method: "DELETE" });
 }
+
+export async function fetchHealthChecks(signal?: AbortSignal): Promise<HealthCheckStatus[]> {
+  const response = await authFetch(`${API_BASE}/api/healthchecks`, { signal });
+  if (!response.ok) throw new Error(`Failed to load health checks (${response.status})`);
+  return response.json();
+}
+
+// ---- Infrastructure inventory ----
+
+export interface ServerDto {
+  id: string;
+  name: string;
+  provider: string | null;
+  ipAddress: string | null;
+  hostname: string | null;
+  role: string | null;
+  cpuCores: number | null;
+  ramGb: number | null;
+  diskGb: number | null;
+  location: string | null;
+  monthlyCost: number | null;
+  currency: string | null;
+  paidUntil: string | null;
+  daysUntilDue: number | null;
+  userCount: number | null;
+  notes: string | null;
+  linkedHealthCheckId: string | null;
+  linkedHostName: string | null;
+  isUp: boolean | null;
+}
+
+export interface ServerLinkDto {
+  id: string;
+  fromServerId: string;
+  toServerId: string;
+  kind: string;
+}
+
+export interface InventoryResponse {
+  servers: ServerDto[];
+  links: ServerLinkDto[];
+}
+
+export interface CreateServerInput {
+  name: string;
+  provider?: string | null;
+  ipAddress?: string | null;
+  hostname?: string | null;
+  role?: string | null;
+  cpuCores?: number | null;
+  ramGb?: number | null;
+  diskGb?: number | null;
+  location?: string | null;
+  monthlyCost?: number | null;
+  currency?: string | null;
+  paidUntil?: string | null;
+  userCount?: number | null;
+  notes?: string | null;
+  linkedHealthCheckId?: string | null;
+  linkedHostName?: string | null;
+}
+
+export async function fetchInventory(signal?: AbortSignal): Promise<InventoryResponse> {
+  const response = await authFetch(`${API_BASE}/api/servers`, { signal });
+  if (!response.ok) throw new Error(`Failed to load inventory (${response.status})`);
+  return response.json();
+}
+
+export async function createServer(input: CreateServerInput): Promise<boolean> {
+  const response = await authFetch(`${API_BASE}/api/servers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return response.ok;
+}
+
+export async function updateServer(id: string, input: CreateServerInput): Promise<boolean> {
+  const response = await authFetch(`${API_BASE}/api/servers/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return response.ok;
+}
+
+export async function deleteServer(id: string): Promise<void> {
+  await authFetch(`${API_BASE}/api/servers/${id}`, { method: "DELETE" });
+}
+
+export async function createServerLink(input: {
+  fromServerId: string;
+  toServerId: string;
+  kind?: string;
+}): Promise<boolean> {
+  const response = await authFetch(`${API_BASE}/api/servers/links`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return response.ok;
+}
+
+export async function deleteServerLink(id: string): Promise<void> {
+  await authFetch(`${API_BASE}/api/servers/links/${id}`, { method: "DELETE" });
+}

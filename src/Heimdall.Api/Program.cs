@@ -6,6 +6,7 @@ using Heimdall.Api.Security;
 using Heimdall.Application.Alerting;
 using Heimdall.Application.HealthChecks;
 using Heimdall.Application.Hosts;
+using Heimdall.Application.Inventory;
 using Heimdall.Application.Metrics;
 using Heimdall.Application.Overview;
 using Heimdall.Contracts;
@@ -37,6 +38,12 @@ builder.Services.AddScoped<CreateAlertRuleHandler>();
 builder.Services.AddScoped<ListAlertRulesHandler>();
 builder.Services.AddScoped<DeleteAlertRuleHandler>();
 builder.Services.AddScoped<ListAlertsHandler>();
+builder.Services.AddScoped<ListInventoryHandler>();
+builder.Services.AddScoped<CreateServerHandler>();
+builder.Services.AddScoped<UpdateServerHandler>();
+builder.Services.AddScoped<DeleteServerHandler>();
+builder.Services.AddScoped<CreateServerLinkHandler>();
+builder.Services.AddScoped<DeleteServerLinkHandler>();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -126,6 +133,7 @@ app.MapHostEndpoints();
 app.MapHealthCheckEndpoints();
 app.MapOverviewEndpoints();
 app.MapAlertEndpoints();
+app.MapServerEndpoints();
 
 // SPA fallback: any non-API, non-asset route returns index.html so the client router can handle it.
 app.MapFallbackToFile("index.html");
