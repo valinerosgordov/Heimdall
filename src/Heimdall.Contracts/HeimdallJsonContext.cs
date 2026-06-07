@@ -21,6 +21,8 @@ namespace Heimdall.Contracts;
 [JsonSerializable(typeof(IReadOnlyList<AlertDto>))]
 [JsonSerializable(typeof(LoginRequest))]
 [JsonSerializable(typeof(LoginResponse))]
+[JsonSerializable(typeof(SetupRequest))]
+[JsonSerializable(typeof(AuthStatusResponse))]
 [JsonSerializable(typeof(CreateServerRequest))]
 [JsonSerializable(typeof(ServerDto))]
 [JsonSerializable(typeof(IReadOnlyList<ServerDto>))]

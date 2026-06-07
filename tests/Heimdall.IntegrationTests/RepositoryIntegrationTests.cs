@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Heimdall.Application.Abstractions;
 using Heimdall.Domain.HealthChecks;
 using Heimdall.Domain.Hosts;
 using Heimdall.Domain.Inventory;
@@ -121,5 +122,36 @@ public sealed class ServerRepositoryIntegrationTests(TimescaleFixture fixture)
         links.Should().Contain(l => l.Id == link.Id && l.Kind == "proxy");
 
         (await repository.DeleteLinkAsync(link.Id, CancellationToken.None)).Should().BeTrue();
+    }
+}
+
+[Collection(nameof(TimescaleCollection))]
+public sealed class OperatorStoreIntegrationTests(TimescaleFixture fixture)
+{
+    [Fact]
+    public async Task Set_then_Get_roundtrips_and_reports_configured()
+    {
+        var store = new OperatorStore(fixture.DataSource);
+
+        await store.SetAsync("opuser", "hashvalue", CancellationToken.None);
+
+        var creds = await store.GetAsync(CancellationToken.None);
+        creds.Should().NotBeNull();
+        creds!.Value.Username.Should().Be("opuser");
+        creds.Value.PasswordSha256.Should().Be("hashvalue");
+        (await store.IsConfiguredAsync(CancellationToken.None)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Set_is_idempotent_upsert()
+    {
+        var store = new OperatorStore(fixture.DataSource);
+
+        await store.SetAsync("first", "h1", CancellationToken.None);
+        await store.SetAsync("second", "h2", CancellationToken.None);
+
+        var creds = await store.GetAsync(CancellationToken.None);
+        creds!.Value.Username.Should().Be("second");
+        creds.Value.PasswordSha256.Should().Be("h2");
     }
 }

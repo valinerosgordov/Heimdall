@@ -81,9 +81,9 @@ builder.Services.AddCors(options => options.AddPolicy(webCorsPolicy, policy =>
     policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
 
 // JWT bearer auth protects the dashboard read/admin endpoints. Agent endpoints use key auth, not JWT.
+var jwtSecretProvider = new JwtSecretProvider(builder.Configuration);
+builder.Services.AddSingleton(jwtSecretProvider);
 builder.Services.AddScoped<JwtTokenService>();
-var jwtSecret = builder.Configuration["Heimdall:Jwt:Secret"]
-    ?? throw new InvalidOperationException("Missing required configuration 'Heimdall:Jwt:Secret'.");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -95,7 +95,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = JwtTokenService.Audience,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretProvider.Secret)),
             ClockSkew = TimeSpan.FromSeconds(30),
         };
         options.Events = new JwtBearerEvents

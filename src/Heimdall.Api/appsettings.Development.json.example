@@ -1,5 +1,5 @@
 {
-  "//": "Copy this file to appsettings.Development.json (gitignored). These are THROWAWAY local-dev values — change every secret before exposing Heimdall to any network. In production use User Secrets / Key Vault, never appsettings.",
+  "//": "Copy to appsettings.Development.json (gitignored). There is NO shipped default password: on first launch Heimdall shows a 'create admin account' screen (stored in the DB) and auto-generates a JWT signing secret under your local app data. Set Heimdall:Jwt:Secret here only if you want to pin it explicitly.",
   "Logging": {
     "LogLevel": {
       "Default": "Information",
@@ -14,14 +14,7 @@
   },
   "Heimdall": {
     "EnrollmentKey": "dev-local-enrollment-key-change-me",
-    "Auth": {
-      "Username": "admin",
-      "//PasswordSha256": "SHA-256 of the operator password. This default is SHA-256 of 'heimdall' -> login admin / heimdall. Generate your own: see README.",
-      "PasswordSha256": "77f1d1c04d32a84a569b4aed05ef453ec4f464fcac98de97bb2f5033df2c4a04"
-    },
     "Jwt": {
-      "//Secret": "HS256 signing key. MUST be replaced with a long random value before any real use.",
-      "Secret": "heimdall-dev-only-jwt-signing-secret-change-me-please-0123456789",
       "LifetimeHours": 8
     }
   }

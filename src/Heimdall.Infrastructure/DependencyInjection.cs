@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddSingleton<IMetricRepository, MetricRepository>();
         services.AddSingleton<IHealthCheckRepository, HealthCheckRepository>();
         services.AddSingleton<IServerRepository, ServerRepository>();
+        services.AddSingleton<IOperatorStore, OperatorStore>();
         services.AddHostedService<DatabaseInitializer>();
 
         // Health-check probes + scheduler.
