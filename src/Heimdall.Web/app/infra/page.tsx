@@ -211,12 +211,17 @@ export default function InfraPage() {
             <div className="font-mono text-xl text-ink">{servers.length}</div>
           </div>
           <div className="hud-panel p-3">
-            <div className="text-[10px] uppercase tracking-widest text-faint">Monthly cost</div>
+            <div className="text-[10px] uppercase tracking-widest text-faint">Cost / month</div>
             <div className="font-mono text-sm text-ink">
               {totalsByCurrency.length === 0
                 ? "—"
                 : totalsByCurrency.map(([cur, sum]) => `${sum} ${cur}`).join(" · ")}
             </div>
+            {totalsByCurrency.length > 0 && (
+              <div className="font-mono text-[10px] text-faint">
+                ≈ {totalsByCurrency.map(([cur, sum]) => `${sum * 12} ${cur}`).join(" · ")} / yr
+              </div>
+            )}
           </div>
           <div className="hud-panel p-3">
             <div className="text-[10px] uppercase tracking-widest text-faint">Due ≤ 7d</div>

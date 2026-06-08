@@ -48,6 +48,9 @@ public static class DependencyInjection
         services.AddHttpClient(TelegramAlertChannel.HttpClientName);
         services.AddHostedService<AlertEvaluationService>();
 
+        // Inventory: renewal-date reminders through the same notification channels.
+        services.AddHostedService<Inventory.BillingReminderService>();
+
         return services;
     }
 }
