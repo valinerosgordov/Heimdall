@@ -5,21 +5,51 @@ using Heimdall.Contracts;
 namespace Heimdall.Agent.Collectors;
 
 /// <summary>
-/// Gathers a host inventory snapshot for auto-discovery: OS, CPU cores, RAM, disk, uptime and
-/// listening TCP ports — all from the BCL, no P/Invoke, cross-platform.
+/// Gathers a host inventory snapshot for auto-discovery: OS, CPU cores, total physical RAM, disk,
+/// uptime and listening TCP ports. Uses the BCL plus one kernel32 call for physical RAM on Windows
+/// (and /proc/meminfo on Linux) so the reported RAM is the machine's, not the GC heap limit.
 /// </summary>
-internal static class InventoryCollector
+internal static partial class InventoryCollector
 {
     public static InventoryReportRequest Collect(string hostName) => new()
     {
         HostName = hostName,
         Os = $"{RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})",
         CpuCores = Environment.ProcessorCount,
-        RamGb = Math.Round(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / 1073741824.0, 1),
+        RamGb = ReadTotalRamGb(),
         DiskGb = ReadDiskGb(),
         UptimeSeconds = Environment.TickCount64 / 1000,
         ListeningPorts = ReadListeningPorts(),
     };
+
+    private static double? ReadTotalRamGb()
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                var status = new MemoryStatusEx { dwLength = (uint)Marshal.SizeOf<MemoryStatusEx>() };
+                if (GlobalMemoryStatusEx(ref status) && status.ullTotalPhys > 0)
+                    return Math.Round(status.ullTotalPhys / 1073741824.0, 1);
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                foreach (var line in File.ReadLines("/proc/meminfo"))
+                {
+                    if (!line.StartsWith("MemTotal:", StringComparison.Ordinal))
+                        continue;
+                    var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 2 && long.TryParse(parts[1], out var kb))
+                        return Math.Round(kb * 1024.0 / 1073741824.0, 1);
+                }
+            }
+        }
+        catch
+        {
+            // fall through to null
+        }
+        return null;
+    }
 
     private static double? ReadDiskGb()
     {
@@ -54,5 +84,23 @@ internal static class InventoryCollector
         {
             return null;
         }
+    }
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GlobalMemoryStatusEx(ref MemoryStatusEx lpBuffer);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MemoryStatusEx
+    {
+        public uint dwLength;
+        public uint dwMemoryLoad;
+        public ulong ullTotalPhys;
+        public ulong ullAvailPhys;
+        public ulong ullTotalPageFile;
+        public ulong ullAvailPageFile;
+        public ulong ullTotalVirtual;
+        public ulong ullAvailVirtual;
+        public ulong ullAvailExtendedVirtual;
     }
 }

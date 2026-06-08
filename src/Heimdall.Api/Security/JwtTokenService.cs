@@ -35,7 +35,9 @@ internal sealed class JwtTokenService(
         if (string.IsNullOrEmpty(request.Password) || request.Password.Length < MinPasswordLength)
             return Error.Validation("Auth.WeakPassword", $"Password must be at least {MinPasswordLength} characters.");
 
-        await operators.SetAsync(username, KeyHasher.Hash(request.Password), cancellationToken);
+        if (!await operators.TryInitializeAsync(username, PasswordHasher.Hash(request.Password), cancellationToken))
+            return Error.Conflict("Auth.AlreadyConfigured", "An operator account already exists.");
+
         return Issue(username);
     }
 
@@ -47,7 +49,7 @@ internal sealed class JwtTokenService(
 
         // Evaluate both unconditionally (no short-circuit) so a wrong username doesn't leak timing.
         var usernameOk = string.Equals(request.Username, credentials.Value.Username, StringComparison.Ordinal);
-        var passwordOk = KeyHasher.Verify(request.Password, credentials.Value.PasswordSha256);
+        var passwordOk = PasswordHasher.Verify(request.Password, credentials.Value.PasswordHash);
 
         if (!usernameOk || !passwordOk)
             return Error.Unauthorized("Auth.InvalidCredentials", "Invalid username or password.");

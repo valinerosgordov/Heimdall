@@ -44,8 +44,8 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
         var sql =
             $"""
             SELECT {Columns} FROM servers
-            WHERE linked_host_name = @h OR name = @h
-            ORDER BY (linked_host_name = @h) DESC
+            WHERE LOWER(linked_host_name) = LOWER(@h) OR LOWER(name) = LOWER(@h)
+            ORDER BY (LOWER(linked_host_name) = LOWER(@h)) DESC
             LIMIT 1;
             """;
 
@@ -53,6 +53,27 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
         var row = await connection.QuerySingleOrDefaultAsync<ServerRow>(new CommandDefinition(
             sql, new { h = hostName }, cancellationToken: cancellationToken));
         return row is null ? null : ToEntity(row);
+    }
+
+    public async Task UpsertDiscoveredAsync(Server server, CancellationToken cancellationToken)
+    {
+        const string sql =
+            """
+            INSERT INTO servers (id, name, provider, ip_address, hostname, role, cpu_cores, ram_gb, disk_gb, location,
+                                 monthly_cost, currency, paid_until, user_count, notes, linked_healthcheck_id, linked_host_name,
+                                 os, listening_ports, last_discovered_at, created_at, updated_at)
+            VALUES (@id, @name, @provider, @ipAddress, @hostname, @role, @cpuCores, @ramGb, @diskGb, @location,
+                    @monthlyCost, @currency, @paidUntil, @userCount, @notes, @linkedHealthCheckId, @linkedHostName,
+                    @os, @listeningPorts, @lastDiscoveredAt, @createdAt, @updatedAt)
+            ON CONFLICT (linked_host_name) WHERE linked_host_name IS NOT NULL
+            DO UPDATE SET os = excluded.os, cpu_cores = excluded.cpu_cores, ram_gb = excluded.ram_gb,
+                          disk_gb = excluded.disk_gb, hostname = excluded.hostname,
+                          listening_ports = excluded.listening_ports, last_discovered_at = excluded.last_discovered_at,
+                          updated_at = excluded.updated_at;
+            """;
+
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await connection.ExecuteAsync(new CommandDefinition(sql, ToParams(server), cancellationToken: cancellationToken));
     }
 
     public async Task<bool> UpdateAsync(Server server, CancellationToken cancellationToken)
@@ -110,17 +131,17 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
     public async Task<bool> DeleteAsync(ServerId id, CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
         await connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM server_links WHERE from_id = @id OR to_id = @id;",
-            new { id = id.Value },
-            cancellationToken: cancellationToken));
+            new { id = id.Value }, transaction, cancellationToken: cancellationToken));
 
         var affected = await connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM servers WHERE id = @id;",
-            new { id = id.Value },
-            cancellationToken: cancellationToken));
+            new { id = id.Value }, transaction, cancellationToken: cancellationToken));
 
+        await transaction.CommitAsync(cancellationToken);
         return affected > 0;
     }
 

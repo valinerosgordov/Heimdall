@@ -28,14 +28,15 @@ public sealed class ReportInventoryHandler(IHostRepository hosts, IServerReposit
         {
             existing.ApplyDiscovery(request.Os, request.CpuCores, request.RamGb, request.DiskGb, hostName, request.ListeningPorts, now);
             await servers.UpdateAsync(existing, cancellationToken);
-        }
-        else
-        {
-            var server = Server.CreateDiscovered(
-                hostName, request.Os, request.CpuCores, request.RamGb, request.DiskGb, request.ListeningPorts, now);
-            await servers.AddAsync(server, cancellationToken);
+            return Result.Success();
         }
 
+        var created = Server.CreateDiscovered(
+            hostName, request.Os, request.CpuCores, request.RamGb, request.DiskGb, request.ListeningPorts, now);
+        if (created.IsFailure)
+            return Result.Failure(created.Error);
+
+        await servers.UpsertDiscoveredAsync(created.Value, cancellationToken);
         return Result.Success();
     }
 }

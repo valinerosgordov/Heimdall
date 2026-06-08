@@ -1,3 +1,4 @@
+using Dapper;
 using FluentAssertions;
 using Heimdall.Application.Abstractions;
 using Heimdall.Domain.HealthChecks;
@@ -123,35 +124,86 @@ public sealed class ServerRepositoryIntegrationTests(TimescaleFixture fixture)
 
         (await repository.DeleteLinkAsync(link.Id, CancellationToken.None)).Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Discovery_fields_and_linked_status_roundtrip()
+    {
+        var healthChecks = new HealthCheckRepository(fixture.DataSource);
+        var repository = new ServerRepository(fixture.DataSource);
+        var now = DateTimeOffset.UtcNow;
+
+        var target = HealthCheckTarget.Create($"it-hc-{Guid.NewGuid():N}", "Http", "http://localhost/health", 10, now).Value;
+        await healthChecks.AddAsync(target, CancellationToken.None);
+        await healthChecks.RecordResultAsync(target.Id, isUp: true, latencyMs: 5, now, CancellationToken.None);
+
+        var draft = new ServerDraft($"it-disc-{Guid.NewGuid():N}", "Hetzner", "10.0.0.5", "h", "Prod",
+            4, 8, 160, "FSN1", 24m, "EUR", DateOnly.FromDateTime(now.UtcDateTime), 100, "n", target.Id.Value, null);
+        var server = Server.Create(draft, now).Value;
+        server.ApplyDiscovery("Ubuntu 24.04", 4, 8, 160, "it-disc-host", "22,443", now);
+        await repository.AddAsync(server, CancellationToken.None);
+
+        var record = (await repository.ListWithStatusAsync(CancellationToken.None)).Single(s => s.Id == server.Id.Value);
+        record.IsUp.Should().BeTrue();
+        record.LinkedHealthCheckId.Should().Be(target.Id.Value);
+        record.Os.Should().Be("Ubuntu 24.04");
+        record.ListeningPorts.Should().Be("22,443");
+        record.LastDiscoveredAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task UpsertDiscovered_is_idempotent_and_FindByHostName_case_insensitive()
+    {
+        var repository = new ServerRepository(fixture.DataSource);
+        var now = DateTimeOffset.UtcNow;
+        var host = $"Box-{Guid.NewGuid():N}";
+
+        await repository.UpsertDiscoveredAsync(Server.CreateDiscovered(host, "Linux", 2, 4, 40, "22", now).Value, CancellationToken.None);
+        await repository.UpsertDiscoveredAsync(Server.CreateDiscovered(host, "Linux", 2, 4, 40, "22,80", now.AddMinutes(1)).Value, CancellationToken.None);
+
+        var found = await repository.FindByHostNameAsync(host.ToUpperInvariant(), CancellationToken.None);
+        found.Should().NotBeNull();
+        found!.ListeningPorts.Should().Be("22,80"); // updated in place, not duplicated
+
+        var rows = (await repository.ListWithStatusAsync(CancellationToken.None)).Where(s => s.LinkedHostName == host).ToList();
+        rows.Should().HaveCount(1);
+    }
 }
 
 [Collection(nameof(TimescaleCollection))]
 public sealed class OperatorStoreIntegrationTests(TimescaleFixture fixture)
 {
-    [Fact]
-    public async Task Set_then_Get_roundtrips_and_reports_configured()
+    private async Task ResetAsync()
     {
+        await using var connection = await fixture.DataSource.OpenConnectionAsync(CancellationToken.None);
+        await connection.ExecuteAsync("DELETE FROM app_config WHERE key LIKE 'operator.%';");
+    }
+
+    [Fact]
+    public async Task TryInitialize_then_Get_roundtrips_and_reports_configured()
+    {
+        await ResetAsync();
         var store = new OperatorStore(fixture.DataSource);
 
-        await store.SetAsync("opuser", "hashvalue", CancellationToken.None);
+        (await store.TryInitializeAsync("opuser", "hashvalue", CancellationToken.None)).Should().BeTrue();
 
         var creds = await store.GetAsync(CancellationToken.None);
         creds.Should().NotBeNull();
         creds!.Value.Username.Should().Be("opuser");
-        creds.Value.PasswordSha256.Should().Be("hashvalue");
+        creds.Value.PasswordHash.Should().Be("hashvalue");
         (await store.IsConfiguredAsync(CancellationToken.None)).Should().BeTrue();
     }
 
     [Fact]
-    public async Task Set_is_idempotent_upsert()
+    public async Task TryInitialize_refuses_second_and_keeps_first()
     {
+        await ResetAsync();
         var store = new OperatorStore(fixture.DataSource);
 
-        await store.SetAsync("first", "h1", CancellationToken.None);
-        await store.SetAsync("second", "h2", CancellationToken.None);
+        (await store.TryInitializeAsync("first", "h1", CancellationToken.None)).Should().BeTrue();
+        (await store.TryInitializeAsync("second", "h2", CancellationToken.None)).Should().BeFalse();
 
         var creds = await store.GetAsync(CancellationToken.None);
-        creds!.Value.Username.Should().Be("second");
-        creds.Value.PasswordSha256.Should().Be("h2");
+        creds!.Value.Username.Should().Be("first");
+        creds.Value.PasswordHash.Should().Be("h1");
     }
 }

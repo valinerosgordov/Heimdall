@@ -7,6 +7,9 @@ public interface IServerRepository
 {
     Task AddAsync(Server server, CancellationToken cancellationToken);
 
+    /// <summary>Race-safe create-or-update of an auto-discovered server, keyed on linked host name.</summary>
+    Task UpsertDiscoveredAsync(Server server, CancellationToken cancellationToken);
+
     Task<Server?> GetAsync(ServerId id, CancellationToken cancellationToken);
 
     /// <summary>Finds the server bound to an agent host (linked_host_name, else name) for auto-discovery upsert.</summary>

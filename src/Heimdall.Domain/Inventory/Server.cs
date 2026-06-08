@@ -49,14 +49,17 @@ public sealed class Server : AggregateRoot<ServerId>
     public Result Update(ServerDraft draft, DateTimeOffset now) => Apply(draft, now);
 
     /// <summary>Creates a server straight from an agent inventory report (auto-discovered host).</summary>
-    public static Server CreateDiscovered(
+    public static Result<Server> CreateDiscovered(
         string hostName, string? os, int? cpuCores, double? ramGb, double? diskGb, string? listeningPorts, DateTimeOffset now)
     {
-        var server = new Server(ServerId.New(), now)
-        {
-            Name = WebUtility.HtmlEncode(hostName.Trim()),
-            LinkedHostName = WebUtility.HtmlEncode(hostName.Trim()),
-        };
+        if (string.IsNullOrWhiteSpace(hostName))
+            return Error.Validation("Server.NameEmpty", "Name must not be empty.");
+
+        var name = WebUtility.HtmlEncode(hostName.Trim());
+        if (name.Length > MaxNameLength)
+            return Error.Validation("Server.NameTooLong", $"Name must be {MaxNameLength} characters or fewer.");
+
+        var server = new Server(ServerId.New(), now) { Name = name, LinkedHostName = name };
         server.ApplyDiscovery(os, cpuCores, ramGb, diskGb, hostName, listeningPorts, now);
         return server;
     }
@@ -65,13 +68,16 @@ public sealed class Server : AggregateRoot<ServerId>
     public void ApplyDiscovery(
         string? os, int? cpuCores, double? ramGb, double? diskGb, string? hostname, string? listeningPorts, DateTimeOffset now)
     {
-        Os = Clean(os, 200);
+        // Preserve last-good values when a report omits a field (transient null/empty), matching the numeric guards.
+        var cleanOs = Clean(os, 200);
+        if (cleanOs is not null) Os = cleanOs;
         if (cpuCores is >= 0) CpuCores = cpuCores;
         if (ramGb is >= 0) RamGb = ramGb;
         if (diskGb is >= 0) DiskGb = diskGb;
         var cleanHost = Clean(hostname);
         if (cleanHost is not null) Hostname = cleanHost;
-        ListeningPorts = Clean(listeningPorts, MaxTextLength);
+        var cleanPorts = Clean(listeningPorts, MaxTextLength);
+        if (cleanPorts is not null) ListeningPorts = cleanPorts;
         LastDiscoveredAt = now;
         UpdatedAt = now;
     }

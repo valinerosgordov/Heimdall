@@ -244,13 +244,13 @@ export default function InfraPage() {
               onChange={(e) => setForm({ ...form, hostname: e.target.value })} className={`font-mono ${inputClass}`} />
             <input placeholder="Role / purpose" value={form.role ?? ""}
               onChange={(e) => setForm({ ...form, role: e.target.value })} className={`col-span-2 ${inputClass}`} />
-            <input type="number" step="any" placeholder="vCPU" value={form.cpuCores ?? ""}
+            <input type="number" step="1" min="0" placeholder="vCPU" value={form.cpuCores ?? ""}
               onChange={(e) => setNum("cpuCores", e.target.value)} className={`font-mono ${inputClass}`} />
             <input type="number" step="any" placeholder="RAM GB" value={form.ramGb ?? ""}
               onChange={(e) => setNum("ramGb", e.target.value)} className={`font-mono ${inputClass}`} />
             <input type="number" step="any" placeholder="Disk GB" value={form.diskGb ?? ""}
               onChange={(e) => setNum("diskGb", e.target.value)} className={`font-mono ${inputClass}`} />
-            <input type="number" step="any" placeholder="Users" value={form.userCount ?? ""}
+            <input type="number" step="1" min="0" placeholder="Users" value={form.userCount ?? ""}
               onChange={(e) => setNum("userCount", e.target.value)} className={`font-mono ${inputClass}`} />
             <input type="number" step="any" placeholder="Cost / mo" value={form.monthlyCost ?? ""}
               onChange={(e) => setNum("monthlyCost", e.target.value)} className={`font-mono ${inputClass}`} />

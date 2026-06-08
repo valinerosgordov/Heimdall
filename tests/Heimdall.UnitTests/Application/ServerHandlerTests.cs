@@ -105,7 +105,7 @@ public sealed class ServerHandlerTests
             new InventoryReportRequest { HostName = "box", Os = "Linux", CpuCores = 4 }, "k", default);
 
         result.IsSuccess.Should().BeTrue();
-        await servers.Received(1).AddAsync(Arg.Any<Server>(), Arg.Any<CancellationToken>());
+        await servers.Received(1).UpsertDiscoveredAsync(Arg.Any<Server>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -123,6 +123,6 @@ public sealed class ServerHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Type.Should().Be(ErrorType.Unauthorized);
-        await servers.DidNotReceive().AddAsync(Arg.Any<Server>(), Arg.Any<CancellationToken>());
+        await servers.DidNotReceive().UpsertDiscoveredAsync(Arg.Any<Server>(), Arg.Any<CancellationToken>());
     }
 }

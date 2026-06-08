@@ -26,12 +26,40 @@ internal sealed class JwtSecretProvider
         if (File.Exists(path))
         {
             var existing = File.ReadAllText(path).Trim();
-            if (existing.Length >= 32)
+            // Trust only a well-formed, full-length secret — never silently use a truncated/tampered file.
+            if (IsStrong(existing))
                 return existing;
         }
 
         var secret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
         File.WriteAllText(path, secret);
+        Restrict(path);
         return secret;
+    }
+
+    private static bool IsStrong(string secret)
+    {
+        try
+        {
+            return Convert.FromBase64String(secret).Length >= 32;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
+
+    private static void Restrict(string path)
+    {
+        if (OperatingSystem.IsWindows())
+            return; // LocalApplicationData is already per-user on Windows.
+        try
+        {
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+        catch
+        {
+            // best effort
+        }
     }
 }

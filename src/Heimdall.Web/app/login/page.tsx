@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { authStatus, login, setupOperator } from "@/lib/auth";
+import { authStatus, getToken, login, setupOperator } from "@/lib/auth";
 
 type Mode = "loading" | "login" | "setup";
 
@@ -16,8 +16,12 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (getToken()) {
+      router.replace("/");
+      return;
+    }
     void authStatus().then((configured) => setMode(configured ? "login" : "setup"));
-  }, []);
+  }, [router]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();

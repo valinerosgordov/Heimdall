@@ -1,17 +1,33 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5087";
 const TOKEN_KEY = "heimdall-token";
+const EXP_KEY = "heimdall-token-exp";
 
+/** Returns the token only if present and not past its known expiry; clears and returns null otherwise. */
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(TOKEN_KEY);
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) return null;
+  const exp = Number(localStorage.getItem(EXP_KEY) ?? "0");
+  if (exp > 0 && Date.now() >= exp) {
+    clearToken();
+    return null;
+  }
+  return token;
+}
+
+function setSession(token: string, expiresAtUnixMs?: number): void {
+  localStorage.setItem(TOKEN_KEY, token);
+  if (expiresAtUnixMs && expiresAtUnixMs > 0) localStorage.setItem(EXP_KEY, String(expiresAtUnixMs));
+  else localStorage.removeItem(EXP_KEY);
 }
 
 export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
+  setSession(token);
 }
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(EXP_KEY);
 }
 
 export async function login(username: string, password: string): Promise<boolean> {
@@ -21,8 +37,8 @@ export async function login(username: string, password: string): Promise<boolean
     body: JSON.stringify({ username, password }),
   });
   if (!response.ok) return false;
-  const data = (await response.json()) as { accessToken: string };
-  setToken(data.accessToken);
+  const data = (await response.json()) as { accessToken: string; expiresAtUnixMs?: number };
+  setSession(data.accessToken, data.expiresAtUnixMs);
   return true;
 }
 
@@ -50,7 +66,7 @@ export async function setupOperator(username: string, password: string): Promise
     body: JSON.stringify({ username, password }),
   });
   if (!response.ok) return false;
-  const data = (await response.json()) as { accessToken: string };
-  setToken(data.accessToken);
+  const data = (await response.json()) as { accessToken: string; expiresAtUnixMs?: number };
+  setSession(data.accessToken, data.expiresAtUnixMs);
   return true;
 }

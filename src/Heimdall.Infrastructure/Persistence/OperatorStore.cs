@@ -8,7 +8,7 @@ namespace Heimdall.Infrastructure.Persistence;
 internal sealed class OperatorStore(NpgsqlDataSource dataSource) : IOperatorStore
 {
     private const string UsernameKey = "operator.username";
-    private const string PasswordKey = "operator.password_sha256";
+    private const string PasswordKey = "operator.password_hash";
 
     public async Task<bool> IsConfiguredAsync(CancellationToken cancellationToken)
         => await GetAsync(cancellationToken) is not null;
@@ -27,23 +27,33 @@ internal sealed class OperatorStore(NpgsqlDataSource dataSource) : IOperatorStor
             : null;
     }
 
-    public async Task SetAsync(string username, string passwordSha256, CancellationToken cancellationToken)
+    public async Task<bool> TryInitializeAsync(string username, string passwordHash, CancellationToken cancellationToken)
     {
+        // Conditional insert in one transaction: the app_config PRIMARY KEY on `key` serializes concurrent
+        // first-run setups, and DO NOTHING means a second writer creates nothing (returns false) instead of
+        // overwriting the first operator.
         const string sql =
             """
             INSERT INTO app_config (key, value) VALUES (@key, @value)
-            ON CONFLICT (key) DO UPDATE SET value = excluded.value;
+            ON CONFLICT (key) DO NOTHING;
             """;
 
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
-        await connection.ExecuteAsync(new CommandDefinition(
-            sql,
-            new[]
-            {
-                new { key = UsernameKey, value = username },
-                new { key = PasswordKey, value = passwordSha256 },
-            },
-            cancellationToken: cancellationToken));
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        var insertedUser = await connection.ExecuteAsync(new CommandDefinition(
+            sql, new { key = UsernameKey, value = username }, transaction, cancellationToken: cancellationToken));
+        var insertedPassword = await connection.ExecuteAsync(new CommandDefinition(
+            sql, new { key = PasswordKey, value = passwordHash }, transaction, cancellationToken: cancellationToken));
+
+        if (insertedUser == 0 || insertedPassword == 0)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return false;
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return true;
     }
 
     private sealed record AppConfigRow(string Key, string Value);

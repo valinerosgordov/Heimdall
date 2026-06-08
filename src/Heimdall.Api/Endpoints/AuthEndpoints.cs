@@ -19,12 +19,12 @@ public static class AuthEndpoints
         group.MapPost("/setup", async (SetupRequest request, JwtTokenService tokens, CancellationToken cancellationToken) =>
                 (await tokens.SetupAsync(request, cancellationToken)).ToHttpResult(response => TypedResults.Ok(response)))
             .AllowAnonymous()
-            .RequireRateLimiting("ingest");
+            .RequireRateLimiting("auth");
 
         group.MapPost("/login", async (LoginRequest request, JwtTokenService tokens, CancellationToken cancellationToken) =>
                 (await tokens.LoginAsync(request, cancellationToken)).ToHttpResult(response => TypedResults.Ok(response)))
             .AllowAnonymous()
-            .RequireRateLimiting("ingest");
+            .RequireRateLimiting("auth");
 
         return app;
     }
