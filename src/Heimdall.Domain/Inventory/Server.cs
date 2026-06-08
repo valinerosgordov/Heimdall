@@ -66,7 +66,7 @@ public sealed class Server : AggregateRoot<ServerId>
 
     /// <summary>Updates only auto-discovered fields; manual fields (cost, paid-until, notes, role…) are preserved.</summary>
     public void ApplyDiscovery(
-        string? os, int? cpuCores, double? ramGb, double? diskGb, string? hostname, string? listeningPorts, DateTimeOffset now)
+        string? os, int? cpuCores, double? ramGb, double? diskGb, string? hostname, string? listeningPorts, DateTimeOffset now, int? userCount = null)
     {
         // Preserve last-good values when a report omits a field (transient null/empty), matching the numeric guards.
         var cleanOs = Clean(os, 200);
@@ -78,6 +78,7 @@ public sealed class Server : AggregateRoot<ServerId>
         if (cleanHost is not null) Hostname = cleanHost;
         var cleanPorts = Clean(listeningPorts, MaxTextLength);
         if (cleanPorts is not null) ListeningPorts = cleanPorts;
+        if (userCount is > 0) UserCount = userCount; // VPN peer count when the probe finds one (else keep manual)
         LastDiscoveredAt = now;
         UpdatedAt = now;
     }

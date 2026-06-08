@@ -21,7 +21,9 @@ internal sealed class SshDiscoveryService(
     private const string ProbeCommand =
         ". /etc/os-release 2>/dev/null; echo OS=$PRETTY_NAME; echo CPU=$(nproc); " +
         "echo RAM_MB=$(free -m | awk '/Mem:/{print $2}'); echo DISK=$(df -BG / | awk 'NR==2{print $2}'); " +
-        "echo PORTS=$(ss -tlnH 2>/dev/null | awk '{print $4}' | sed 's/.*://' | sort -un | paste -sd, -)";
+        "echo PORTS=$(ss -tlnH 2>/dev/null | awk '{print $4}' | sed 's/.*://' | sort -un | paste -sd, -); " +
+        "echo USERS=$( { wg show all peers 2>/dev/null; awg show all peers 2>/dev/null; " +
+        "for c in $(docker ps -q 2>/dev/null); do docker exec \"$c\" sh -c 'wg show all peers 2>/dev/null; awg show all peers 2>/dev/null' 2>/dev/null; done; } | grep -c . )";
 
     private readonly SshDiscoveryOptions _options = options.Value;
 
@@ -85,7 +87,8 @@ internal sealed class SshDiscoveryService(
             ParseDiskGb(fields.GetValueOrDefault("DISK")),
             target.Host,
             fields.GetValueOrDefault("PORTS"),
-            clock.GetUtcNow());
+            clock.GetUtcNow(),
+            ParseInt(fields.GetValueOrDefault("USERS")));
 
         await servers.UpdateAsync(server, cancellationToken);
         logger.LogInformation("SSH-discovered {Server} ({Os}).", target.Name, fields.GetValueOrDefault("OS"));
