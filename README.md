@@ -2,7 +2,7 @@
 
 Self-hosted monitoring for your servers and projects — a focused mix of Prometheus (collection) and Grafana (visualization), built as one coherent stack. The watchman of your infrastructure.
 
-> **Status:** Phases 0–11. A cross-platform `.NET 10` agent enrolls with a per-host key and pushes CPU/memory/disk/network/uptime to the API, which stores samples in TimescaleDB. A scheduler probes HTTP/TCP health-check targets, and a threshold **alert engine** fires/resolves rules with Telegram + email channels. The Next.js dashboard (ASUS ROG dark HUD) shows a **live overview grid via Server-Sent Events**, per-host detail with radial gauges and **auto-downsampled** time-series, and an alerts board. Phases 7–11 add an **Infrastructure** view — a server inventory with cost & renewal-date tracking and a visual topology graph — plus **agent auto-discovery** (hosts report their own OS/cores/RAM/disk/listening ports, so the inventory fills itself) and **first-run admin setup** (you create your account on first launch; no shipped default password, JWT secret auto-generated). Hardened with **JWT auth, per-IP rate limiting, OpenTelemetry traces/metrics, retention policies, and Problem Details** exception handling. **114 tests** (unit + architecture + Testcontainers integration) pass.
+> **Status:** Phases 0–17. A cross-platform `.NET 10` agent enrolls with a per-host key and pushes CPU/memory/disk/network/uptime to the API, which stores samples in TimescaleDB. A scheduler probes **HTTP / TCP / TLS** targets — TLS checks track **days-to-certificate-expiry** — every monitor shows **24h uptime %**, and a threshold **alert engine** fires/resolves rules through Telegram + email channels, configurable and testable from a **Settings** page. The Next.js dashboard (ASUS ROG dark HUD) shows a **live overview grid via Server-Sent Events**, per-host detail with radial gauges and **auto-downsampled** time-series, and an alerts board. The **Infrastructure** view is a server inventory with cost & renewal tracking, a **layered topology graph**, and **live host metrics** on each card; it fills itself two ways — **agent auto-discovery** (hosts report their own OS/cores/RAM/disk/ports) and **scheduled read-only SSH discovery** for agentless servers (Heimdall re-probes them on a timer and refreshes specs/ports). **Renewal reminders** ping the same channels before a server's paid-until date. **First-run admin setup** (no shipped default password; salted PBKDF2 credentials; JWT secret auto-generated). Hardened with **JWT auth, per-IP rate limiting, OpenTelemetry traces/metrics, retention policies, and Problem Details** exception handling. **128 tests** (unit + architecture + Testcontainers integration) pass.
 
 ---
 
@@ -139,8 +139,8 @@ Dashboard read/admin endpoints (`/api/hosts`, `/api/overview`, `/api/stream/*`, 
 | `GET` | `/api/hosts/{hostName}/metrics?names=…&minutes=15&maxPoints=500` | — | Query time series (auto-downsampled when the window is wide) |
 | `GET` | `/api/overview` | — | Overview snapshot: hosts + latest values + online state + health |
 | `GET` | `/api/stream/overview` | — | Live overview via Server-Sent Events (2s cadence) |
-| `POST` | `/api/healthchecks` | — | Create a health-check target (`Http`/`Tcp`) |
-| `GET` | `/api/healthchecks` | — | Status board (latest up/down + latency) |
+| `POST` | `/api/healthchecks` | — | Create a health-check target (`Http`/`Tcp`/`Tls`) |
+| `GET` | `/api/healthchecks` | — | Status board (latest up/down, latency, 24h uptime %) |
 | `DELETE` | `/api/healthchecks/{id}` | — | Remove a target |
 | `GET` | `/api/healthchecks/{id}/history?minutes=60` | — | Probe result history |
 | `POST` | `/api/alerts/rules` | — | Create an alert rule (`gt`/`lt`/`gte`/`lte`, `warning`/`critical`) |
@@ -151,6 +151,8 @@ Dashboard read/admin endpoints (`/api/hosts`, `/api/overview`, `/api/stream/*`, 
 | `POST`·`PUT`·`DELETE` | `/api/servers[/{id}]` | JWT | Create / update / delete a server |
 | `POST`·`DELETE` | `/api/servers/links[/{id}]` | JWT | Create / delete a topology link |
 | `POST` | `/api/ingest/inventory` | `X-Heimdall-Key` | Agent auto-discovery: upsert a host's OS / specs / ports |
+| `GET` | `/api/settings/channels` | JWT | Notification channel status (Telegram / Email configured?) |
+| `POST` | `/api/settings/channels/test` | JWT | Send a test notification through the configured channels |
 
 `/api/enroll` and `/api/ingest/*` are rate-limited to 120 requests / 10s per client IP.
 
@@ -172,7 +174,8 @@ curl -X POST http://localhost:5087/api/ingest/metrics \
 - **API** — `src/Heimdall.Api/appsettings.Development.json`: connection string, CORS origins, the dev `Heimdall:EnrollmentKey`, optional `Heimdall:Jwt:LifetimeHours`. **No operator credentials or signing secret live here** — the admin account is created on first run (stored in the DB), and the JWT secret is auto-generated under `%LOCALAPPDATA%/Heimdall/jwt.secret` (override with `Heimdall:Jwt:Secret` to pin it).
 - **Agent** — `src/Heimdall.Agent/appsettings.json`: `ServerUrl`, `EnrollmentKey`, optional `HostName` (defaults to the machine name), `IntervalSeconds`. On first run the agent enrolls and caches its per-host key under `%LOCALAPPDATA%/Heimdall/<host>.key` (Linux: `~/.local/share/Heimdall/`).
 - **Web** — `src/Heimdall.Web/.env.local`: `NEXT_PUBLIC_API_URL`.
-- **Alert channels (optional)** — `Heimdall:Telegram:{BotToken,ChatId}` and/or `Heimdall:Email:{Host,Port,From,To,User,Password}`. Unconfigured channels are skipped silently.
+- **Alert channels (optional)** — `Heimdall:Telegram:{BotToken,ChatId}` and/or `Heimdall:Email:{Host,Port,From,To,User,Password}`. Unconfigured channels are skipped silently. The dashboard's **Settings** page shows which channels are configured and can **send a test notification**.
+- **SSH discovery (optional)** — `Heimdall:SshDiscovery:{IntervalMinutes,Servers[]}`, each server `{Name,Host,User,KeyPath}`. Heimdall periodically SSHes (read-only) into each and refreshes its inventory (OS / CPU / RAM / disk / ports). `Name` matches a server card; `KeyPath` points to a **local private key file** — the key material is never stored. Lives only in your gitignored `appsettings.Development.json`.
 - **Telemetry** — OpenTelemetry traces + metrics export to the console by default; set up an OTLP collector and swap `AddConsoleExporter()` for `AddOtlpExporter()` for Jaeger/Seq.
 
 > `appsettings.Development.json` is **gitignored**. On a fresh clone, copy the template first:
@@ -195,8 +198,13 @@ curl -X POST http://localhost:5087/api/ingest/metrics \
 - [x] **Phase 7** — Infrastructure inventory: servers (provider, IP, specs, monthly cost, renewal date, user count), directed topology links, CRUD, billing countdown on the dashboard.
 - [x] **Phase 8** — First-run setup: create-admin onboarding (operator stored in the DB), no shipped default password, auto-generated persisted JWT secret.
 - [x] **Phase 9** — Agent auto-discovery: the agent reports OS / cores / RAM / disk / uptime / listening ports; the matching server's discovered fields upsert (manual cost & renewal preserved).
-- [x] **Phase 11** — Visual topology graph: dependency-free SVG of server connections, coloured by liveness.
-- [ ] **Phase 10 / 12+ (planned)** — users/sessions/VPN-peer metric · SSH-based discovery for agentless servers · remote agents over HTTPS · renewal-due alerts · richer cost dashboard.
+- [x] **Phase 11** — Visual topology graph: dependency-free SVG of server connections, coloured by liveness (layered DAG layout).
+- [x] **Phase 13** — Billing intelligence: renewal reminders through the alert channels + annual cost projection.
+- [x] **Phase 14** — TLS certificate monitor (new probe kind, days-to-expiry) + **24h uptime %** per monitor.
+- [x] **Phase 15** — Scheduled **read-only SSH auto-discovery** for agentless servers (config targets; key paths only, never the key material).
+- [x] **Phase 16** — Notification settings: channel status + **send-test** from the dashboard.
+- [x] **Phase 17** — **Live host metrics** on inventory cards (a card linked to a reporting agent host shows live CPU / MEM / DISK).
+- [ ] **Planned** — SSH targets editable in the UI · response-time charts · multi-user roles · remote agents over HTTPS.
 
 ---
 
@@ -217,5 +225,5 @@ dotnet test Heimdall.slnx
 - **.NET Aspire** orchestration is deferred; local dev uses `docker compose` for TimescaleDB to keep the build clean on the preview SDK.
 - **Agent resilience:** the agent buffers batches (bounded, ~10 min) and resends oldest-first, so a server restart or network blip doesn't lose samples; its HTTP timeout is capped so a hung server can't stall the collection loop.
 - **Desktop deployment:** the agent must run natively on the host (a container would report the container's metrics, not the host's), so the deploy model is published API+Agent (`dist/`) + `next start` web + TimescaleDB in Docker, wired by `scripts/*.ps1` and a Desktop shortcut. The API port is pinned in `appsettings.json` (`Urls`) since `launchSettings.json` isn't published.
-- **JWT auth (single operator):** on first run the dashboard calls `/api/auth/status`, shows a **create-admin** screen, and `POST /api/auth/setup` stores the operator (username + SHA-256 hash) in the `app_config` table — so no default password ships. `/api/auth/login` issues an HS256 Bearer token (8h, configurable) signed with a secret that's generated once and persisted under `%LOCALAPPDATA%/Heimdall/jwt.secret` (or pinned via `Heimdall:Jwt:Secret`). Read/admin endpoints require the token; SSE receives it via `?access_token=` (since `EventSource` can't set headers). Agent endpoints stay on enrollment/agent-key auth. Simplified for a single-user pet tool: **no refresh-token rotation** (re-login on expiry).
+- **JWT auth (single operator):** on first run the dashboard calls `/api/auth/status`, shows a **create-admin** screen, and `POST /api/auth/setup` stores the operator (username + salted **PBKDF2-SHA256** hash, 600k iterations) in the `app_config` table — so no default password ships. `/api/auth/login` issues an HS256 Bearer token (8h, configurable) signed with a secret that's generated once and persisted under `%LOCALAPPDATA%/Heimdall/jwt.secret` (or pinned via `Heimdall:Jwt:Secret`). Read/admin endpoints require the token; SSE receives it via `?access_token=` (since `EventSource` can't set headers). Agent endpoints stay on enrollment/agent-key auth. Simplified for a single-user pet tool: **no refresh-token rotation** (re-login on expiry).
 - **Auto-discovery:** the agent posts a host inventory snapshot (OS, cores, RAM, disk, uptime, listening TCP ports) to `/api/ingest/inventory` on its first tick and hourly; the server matched by linked host name (else name) has its **discovered** fields upserted while manual fields (cost, renewal date, notes, role, links) are preserved — you only type what the machine can't know.
