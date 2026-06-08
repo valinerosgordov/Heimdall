@@ -42,6 +42,7 @@ export interface HealthCheckStatus {
   isUp: boolean | null;
   latencyMs: number | null;
   lastCheckedAtUnixMs: number | null;
+  uptime24h: number | null;
 }
 
 export interface OverviewHost {

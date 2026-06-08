@@ -11,7 +11,8 @@ public readonly record struct HealthCheckStatus(
     bool Enabled,
     bool? IsUp,
     double? LatencyMs,
-    DateTimeOffset? LastCheckedAt);
+    DateTimeOffset? LastCheckedAt,
+    double? Uptime24h);
 
 /// <summary>Read model: one historical probe result.</summary>
 public readonly record struct HealthCheckResultRow(long TimestampUnixMs, bool IsUp, double LatencyMs);

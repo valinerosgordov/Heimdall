@@ -64,7 +64,10 @@ internal sealed class HealthCheckRepository(NpgsqlDataSource dataSource) : IHeal
         const string sql =
             """
             SELECT t.id, t.name, t.kind, t.target, t.enabled, t.last_checked_at,
-                   r.is_up, r.latency_ms
+                   r.is_up, r.latency_ms,
+                   (SELECT round(100.0 * sum(CASE WHEN u.is_up THEN 1 ELSE 0 END) / count(*), 1)::double precision
+                    FROM healthcheck_results u
+                    WHERE u.target_id = t.id AND u.time > now() - INTERVAL '24 hours') AS uptime24h
             FROM healthcheck_targets t
             LEFT JOIN LATERAL (
                 SELECT is_up, latency_ms
@@ -89,7 +92,8 @@ internal sealed class HealthCheckRepository(NpgsqlDataSource dataSource) : IHeal
                 r.Enabled,
                 r.IsUp,
                 r.LatencyMs,
-                AsUtc(r.LastCheckedAt))),
+                AsUtc(r.LastCheckedAt),
+                r.Uptime24h)),
         ];
     }
 
@@ -165,5 +169,5 @@ internal sealed class HealthCheckRepository(NpgsqlDataSource dataSource) : IHeal
         Guid Id, string Name, string Kind, string Target, int IntervalSeconds, bool Enabled, DateTime CreatedAt, DateTime? LastCheckedAt);
 
     private sealed record StatusRow(
-        Guid Id, string Name, string Kind, string Target, bool Enabled, DateTime? LastCheckedAt, bool? IsUp, double? LatencyMs);
+        Guid Id, string Name, string Kind, string Target, bool Enabled, DateTime? LastCheckedAt, bool? IsUp, double? LatencyMs, double? Uptime24h);
 }

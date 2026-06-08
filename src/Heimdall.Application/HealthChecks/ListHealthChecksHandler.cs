@@ -20,6 +20,7 @@ public sealed class ListHealthChecksHandler(IHealthCheckRepository repository)
                 IsUp = s.IsUp,
                 LatencyMs = s.LatencyMs,
                 LastCheckedAtUnixMs = s.LastCheckedAt?.ToUnixTimeMilliseconds(),
+                Uptime24h = s.Uptime24h,
             }),
         ];
     }

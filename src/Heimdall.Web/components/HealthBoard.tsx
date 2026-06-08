@@ -19,16 +19,17 @@ export default function HealthBoard({
 
   return (
     <div className="hud-panel overflow-hidden">
-      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 border-b border-border px-4 py-2 text-[10px] uppercase tracking-widest text-faint">
+      <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 border-b border-border px-4 py-2 text-[10px] uppercase tracking-widest text-faint">
         <span>Target</span>
         <span>Latency</span>
+        <span>24h</span>
         <span>Status</span>
         <span></span>
       </div>
       {checks.map((check) => (
         <div
           key={check.id}
-          className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 border-b border-border px-4 py-3 last:border-b-0"
+          className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 border-b border-border px-4 py-3 last:border-b-0"
           data-status={check.isUp === false ? "down" : undefined}
         >
           <div className="min-w-0">
@@ -39,6 +40,22 @@ export default function HealthBoard({
           </div>
           <div className="font-mono text-sm tabular-nums text-muted">
             {check.latencyMs === null ? "--" : `${check.latencyMs.toFixed(0)} ms`}
+          </div>
+          <div
+            className="font-mono text-xs tabular-nums"
+            title="Uptime over the last 24h"
+            style={{
+              color:
+                check.uptime24h === null
+                  ? "var(--text-muted)"
+                  : check.uptime24h >= 99
+                    ? "var(--success)"
+                    : check.uptime24h >= 95
+                      ? "var(--warning)"
+                      : "var(--danger)",
+            }}
+          >
+            {check.uptime24h === null ? "—" : `${check.uptime24h.toFixed(1)}%`}
           </div>
           <StatusPill state={stateOf(check)} />
           {onDelete ? (

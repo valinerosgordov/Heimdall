@@ -26,6 +26,9 @@ public sealed record HealthCheckStatusDto
     public bool? IsUp { get; init; }
     public double? LatencyMs { get; init; }
     public long? LastCheckedAtUnixMs { get; init; }
+
+    /// <summary>Availability over the last 24h as a percentage (0–100), or null if no probes yet.</summary>
+    public double? Uptime24h { get; init; }
 }
 
 /// <summary>One probe result over time.</summary>
