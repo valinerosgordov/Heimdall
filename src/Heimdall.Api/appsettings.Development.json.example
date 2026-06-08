@@ -17,6 +17,10 @@
     "Jwt": {
       "LifetimeHours": 8
     },
+    "//Telegram": "Optional: set BotToken + ChatId to send alerts and renewal reminders to Telegram (empty = off).",
+    "Telegram": { "BotToken": "", "ChatId": "" },
+    "//Email": "Optional SMTP: set Host + From + To (and Port/User/Password) to send email alerts (empty = off).",
+    "Email": { "Host": "", "Port": 587, "From": "", "To": "", "User": "", "Password": "" },
     "//SshDiscovery": "Optional read-only SSH discovery: Heimdall periodically re-probes each server and refreshes its inventory (OS / CPU / RAM / disk / ports). 'Name' must match a server card; 'KeyPath' points to a LOCAL private key file (e.g. ~/.ssh/id_ed25519) — the key material is never stored. This section lives only in your gitignored appsettings.Development.json, never in the repo.",
     "SshDiscovery": {
       "IntervalMinutes": 30,

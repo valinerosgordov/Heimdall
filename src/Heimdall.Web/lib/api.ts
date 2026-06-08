@@ -166,6 +166,25 @@ export async function fetchHealthChecks(signal?: AbortSignal): Promise<HealthChe
   return response.json();
 }
 
+// ---- Notification channels (settings) ----
+
+export interface ChannelStatus {
+  name: string;
+  configured: boolean;
+}
+
+export async function fetchChannelStatus(signal?: AbortSignal): Promise<ChannelStatus[]> {
+  const response = await authFetch(`${API_BASE}/api/settings/channels`, { signal });
+  if (!response.ok) throw new Error(`Failed to load channels (${response.status})`);
+  return response.json();
+}
+
+export async function sendTestNotification(): Promise<{ channelsNotified: number; channels: string[] } | null> {
+  const response = await authFetch(`${API_BASE}/api/settings/channels/test`, { method: "POST" });
+  if (!response.ok) return null;
+  return response.json();
+}
+
 // ---- Infrastructure inventory ----
 
 export interface ServerDto {

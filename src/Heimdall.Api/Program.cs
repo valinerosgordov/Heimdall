@@ -45,6 +45,8 @@ builder.Services.AddScoped<DeleteServerHandler>();
 builder.Services.AddScoped<CreateServerLinkHandler>();
 builder.Services.AddScoped<DeleteServerLinkHandler>();
 builder.Services.AddScoped<ReportInventoryHandler>();
+builder.Services.AddScoped<GetChannelStatusHandler>();
+builder.Services.AddScoped<SendTestNotificationHandler>();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -141,6 +143,7 @@ app.MapHealthCheckEndpoints();
 app.MapOverviewEndpoints();
 app.MapAlertEndpoints();
 app.MapServerEndpoints();
+app.MapSettingsEndpoints();
 
 // SPA fallback: any non-API, non-asset route returns index.html so the client router can handle it.
 app.MapFallbackToFile("index.html");
