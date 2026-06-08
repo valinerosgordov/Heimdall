@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import StatusPill, { StatusState } from "@/components/StatusPill";
+import TopologyGraph from "@/components/TopologyGraph";
 import {
   CreateServerInput,
   HealthCheckStatus,
@@ -333,6 +334,11 @@ export default function InfraPage() {
 
       <section>
         <SectionTitle>Topology — connections</SectionTitle>
+        {links.length > 0 && (
+          <div className="hud-panel mb-3 p-4">
+            <TopologyGraph servers={servers} links={links} />
+          </div>
+        )}
         <div className="hud-panel p-4">
           {links.length === 0 ? (
             <p className="mb-3 text-sm text-muted">No connections yet. Link a proxy to the servers it fronts, or a DB to its app.</p>
