@@ -6,6 +6,7 @@ import TopologyGraph from "@/components/TopologyGraph";
 import {
   CreateServerInput,
   HealthCheckStatus,
+  OverviewHost,
   ServerDto,
   ServerLinkDto,
   createServer,
@@ -14,6 +15,7 @@ import {
   deleteServerLink,
   fetchHealthChecks,
   fetchInventory,
+  fetchOverview,
   updateServer,
 } from "@/lib/api";
 
@@ -84,6 +86,7 @@ export default function InfraPage() {
   const [servers, setServers] = useState<ServerDto[]>([]);
   const [links, setLinks] = useState<ServerLinkDto[]>([]);
   const [checks, setChecks] = useState<HealthCheckStatus[]>([]);
+  const [hosts, setHosts] = useState<OverviewHost[]>([]);
   const [form, setForm] = useState<CreateServerInput>(EMPTY);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -92,10 +95,11 @@ export default function InfraPage() {
 
   const refresh = async () => {
     try {
-      const [inv, hc] = await Promise.all([fetchInventory(), fetchHealthChecks()]);
+      const [inv, hc, ov] = await Promise.all([fetchInventory(), fetchHealthChecks(), fetchOverview()]);
       setServers(inv.servers);
       setLinks(inv.links);
       setChecks(hc);
+      setHosts(ov.hosts);
     } catch {
       /* keep last good state */
     }
@@ -108,6 +112,8 @@ export default function InfraPage() {
   }, []);
 
   const nameById = useMemo(() => new Map(servers.map((s) => [s.id, s.name])), [servers]);
+  const hostByName = useMemo(() => new Map(hosts.map((h) => [h.name.toLowerCase(), h])), [hosts]);
+  const liveHostFor = (s: ServerDto) => hostByName.get((s.linkedHostName ?? s.name).toLowerCase());
 
   const totalsByCurrency = useMemo(() => {
     const m = new Map<string, number>();
@@ -316,6 +322,18 @@ export default function InfraPage() {
                   {s.os && <Field label="OS" value={s.os} className="col-span-2" />}
                   {s.listeningPorts && <Field label="Ports" value={s.listeningPorts} className="col-span-2" />}
                 </div>
+
+                {(() => {
+                  const h = liveHostFor(s);
+                  return h?.online ? (
+                    <div className="mt-2 flex items-center gap-3 font-mono text-xs">
+                      <span className="text-[10px] uppercase tracking-widest" style={{ color: "var(--success)" }}>● live</span>
+                      <span className="text-muted">cpu {h.cpu?.toFixed(0) ?? "—"}%</span>
+                      <span className="text-muted">mem {h.memory?.toFixed(0) ?? "—"}%</span>
+                      <span className="text-muted">disk {h.disk?.toFixed(0) ?? "—"}%</span>
+                    </div>
+                  ) : null;
+                })()}
 
                 <div className="mt-3 flex items-center justify-between border-t border-border pt-2">
                   <span className="font-mono text-xs text-ink">{costText(s) || "no cost set"}</span>
