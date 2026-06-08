@@ -22,7 +22,8 @@ internal static class ServerMappings
         r.Name, r.Provider, r.IpAddress, r.Hostname, r.Role,
         r.CpuCores, r.RamGb, r.DiskGb, r.Location,
         r.MonthlyCost, r.Currency, paidUntil, r.UserCount, r.Notes,
-        r.LinkedHealthCheckId, r.LinkedHostName);
+        r.LinkedHealthCheckId, r.LinkedHostName,
+        r.BillingCycle, r.AutoRenew, r.PaymentMethod);
 
     public static ServerRecord ToRecord(Server s) => new(
         s.Id.Value, s.Name, s.Provider, s.IpAddress, s.Hostname, s.Role,
@@ -30,7 +31,8 @@ internal static class ServerMappings
         s.MonthlyCost, s.Currency, s.PaidUntil, s.UserCount, s.Notes,
         s.LinkedHealthCheckId, s.LinkedHostName,
         s.Os, s.ListeningPorts, s.LastDiscoveredAt,
-        IsUp: null);
+        IsUp: null,
+        BillingCycle: s.BillingCycle, AutoRenew: s.AutoRenew, PaymentMethod: s.PaymentMethod);
 
     public static ServerDto ToDto(ServerRecord r, DateOnly today)
     {
@@ -55,6 +57,9 @@ internal static class ServerMappings
             Notes = r.Notes,
             LinkedHealthCheckId = r.LinkedHealthCheckId,
             LinkedHostName = r.LinkedHostName,
+            BillingCycle = r.BillingCycle,
+            AutoRenew = r.AutoRenew,
+            PaymentMethod = r.PaymentMethod,
             IsUp = r.IsUp,
             Os = r.Os,
             ListeningPorts = r.ListeningPorts,

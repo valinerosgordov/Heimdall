@@ -121,6 +121,9 @@ internal sealed class DatabaseInitializer(NpgsqlDataSource dataSource, ILogger<D
         ALTER TABLE servers ADD COLUMN IF NOT EXISTS os                text        NULL;
         ALTER TABLE servers ADD COLUMN IF NOT EXISTS listening_ports   text        NULL;
         ALTER TABLE servers ADD COLUMN IF NOT EXISTS last_discovered_at timestamptz NULL;
+        ALTER TABLE servers ADD COLUMN IF NOT EXISTS billing_cycle     text        NULL;
+        ALTER TABLE servers ADD COLUMN IF NOT EXISTS auto_renew        boolean     NOT NULL DEFAULT false;
+        ALTER TABLE servers ADD COLUMN IF NOT EXISTS payment_method    text        NULL;
 
         CREATE TABLE IF NOT EXISTS app_config (
             key   text PRIMARY KEY,

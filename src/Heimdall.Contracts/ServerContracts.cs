@@ -34,6 +34,15 @@ public sealed record CreateServerRequest
 
     /// <summary>Optional agent host name whose metrics belong to this server.</summary>
     public string? LinkedHostName { get; init; }
+
+    /// <summary>How often you pay: "monthly" | "quarterly" | "yearly".</summary>
+    public string? BillingCycle { get; init; }
+
+    /// <summary>Whether the subscription renews automatically.</summary>
+    public bool? AutoRenew { get; init; }
+
+    /// <summary>Free-form payment method note, e.g. "card", "crypto", "invoice".</summary>
+    public string? PaymentMethod { get; init; }
 }
 
 /// <summary>A server inventory record, with billing countdown and linked liveness.</summary>
@@ -60,6 +69,9 @@ public sealed record ServerDto
     public string? Notes { get; init; }
     public Guid? LinkedHealthCheckId { get; init; }
     public string? LinkedHostName { get; init; }
+    public string? BillingCycle { get; init; }
+    public bool AutoRenew { get; init; }
+    public string? PaymentMethod { get; init; }
 
     /// <summary>Latest liveness of the linked health-check, if any.</summary>
     public bool? IsUp { get; init; }

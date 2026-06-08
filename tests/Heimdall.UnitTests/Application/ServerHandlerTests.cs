@@ -77,7 +77,8 @@ public sealed class ServerHandlerTests
         var record = new ServerRecord(
             Guid.NewGuid(), "web", null, null, null, null, null, null, null, null,
             null, null, new DateOnly(2026, 1, 20), null, null, null, null,
-            null, null, null, true);
+            null, null, null, true,
+            null, false, null);
         repo.ListWithStatusAsync(Arg.Any<CancellationToken>()).Returns([record]);
         repo.ListLinksAsync(Arg.Any<CancellationToken>()).Returns([]);
         var handler = new ListInventoryHandler(repo, new FixedTimeProvider(Now));

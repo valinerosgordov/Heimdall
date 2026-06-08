@@ -22,4 +22,7 @@ public readonly record struct ServerRecord(
     string? Os,
     string? ListeningPorts,
     DateTimeOffset? LastDiscoveredAt,
-    bool? IsUp);
+    bool? IsUp,
+    string? BillingCycle,
+    bool AutoRenew,
+    string? PaymentMethod);

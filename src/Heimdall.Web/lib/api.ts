@@ -206,6 +206,9 @@ export interface ServerDto {
   notes: string | null;
   linkedHealthCheckId: string | null;
   linkedHostName: string | null;
+  billingCycle: string | null;
+  autoRenew: boolean;
+  paymentMethod: string | null;
   isUp: boolean | null;
   os: string | null;
   listeningPorts: string | null;
@@ -241,6 +244,9 @@ export interface CreateServerInput {
   notes?: string | null;
   linkedHealthCheckId?: string | null;
   linkedHostName?: string | null;
+  billingCycle?: string | null;
+  autoRenew?: boolean | null;
+  paymentMethod?: string | null;
 }
 
 export async function fetchInventory(signal?: AbortSignal): Promise<InventoryResponse> {

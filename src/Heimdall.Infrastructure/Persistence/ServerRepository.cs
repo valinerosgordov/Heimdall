@@ -11,6 +11,7 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
     private const string Columns =
         "id, name, provider, ip_address, hostname, role, cpu_cores, ram_gb, disk_gb, location, " +
         "monthly_cost, currency, paid_until, user_count, notes, linked_healthcheck_id, linked_host_name, " +
+        "billing_cycle, auto_renew, payment_method, " +
         "os, listening_ports, last_discovered_at, created_at, updated_at";
 
     public async Task AddAsync(Server server, CancellationToken cancellationToken)
@@ -19,9 +20,11 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
             """
             INSERT INTO servers (id, name, provider, ip_address, hostname, role, cpu_cores, ram_gb, disk_gb, location,
                                  monthly_cost, currency, paid_until, user_count, notes, linked_healthcheck_id, linked_host_name,
+                                 billing_cycle, auto_renew, payment_method,
                                  os, listening_ports, last_discovered_at, created_at, updated_at)
             VALUES (@id, @name, @provider, @ipAddress, @hostname, @role, @cpuCores, @ramGb, @diskGb, @location,
                     @monthlyCost, @currency, @paidUntil, @userCount, @notes, @linkedHealthCheckId, @linkedHostName,
+                    @billingCycle, @autoRenew, @paymentMethod,
                     @os, @listeningPorts, @lastDiscoveredAt, @createdAt, @updatedAt);
             """;
 
@@ -85,6 +88,7 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
                 cpu_cores = @cpuCores, ram_gb = @ramGb, disk_gb = @diskGb, location = @location,
                 monthly_cost = @monthlyCost, currency = @currency, paid_until = @paidUntil, user_count = @userCount,
                 notes = @notes, linked_healthcheck_id = @linkedHealthCheckId, linked_host_name = @linkedHostName,
+                billing_cycle = @billingCycle, auto_renew = @autoRenew, payment_method = @paymentMethod,
                 os = @os, listening_ports = @listeningPorts, last_discovered_at = @lastDiscoveredAt,
                 updated_at = @updatedAt
             WHERE id = @id;
@@ -101,6 +105,7 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
             """
             SELECT s.id, s.name, s.provider, s.ip_address, s.hostname, s.role, s.cpu_cores, s.ram_gb, s.disk_gb, s.location,
                    s.monthly_cost, s.currency, s.paid_until, s.user_count, s.notes, s.linked_healthcheck_id, s.linked_host_name,
+                   s.billing_cycle, s.auto_renew, s.payment_method,
                    s.os, s.listening_ports, s.last_discovered_at,
                    r.is_up
             FROM servers s
@@ -124,7 +129,8 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
                 r.CpuCores, r.RamGb, r.DiskGb, r.Location, r.MonthlyCost, r.Currency, r.PaidUntil, r.UserCount, r.Notes,
                 r.LinkedHealthCheckId, r.LinkedHostName,
                 r.Os, r.ListeningPorts, AsUtc(r.LastDiscoveredAt),
-                r.IsUp)),
+                r.IsUp,
+                r.BillingCycle, r.AutoRenew, r.PaymentMethod)),
         ];
     }
 
@@ -193,6 +199,9 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
         notes = s.Notes,
         linkedHealthCheckId = s.LinkedHealthCheckId,
         linkedHostName = s.LinkedHostName,
+        billingCycle = s.BillingCycle,
+        autoRenew = s.AutoRenew,
+        paymentMethod = s.PaymentMethod,
         os = s.Os,
         listeningPorts = s.ListeningPorts,
         lastDiscoveredAt = s.LastDiscoveredAt?.UtcDateTime,
@@ -205,7 +214,8 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
         r.CpuCores, r.RamGb, r.DiskGb, r.Location, r.MonthlyCost, r.Currency, r.PaidUntil, r.UserCount, r.Notes,
         r.LinkedHealthCheckId, r.LinkedHostName,
         r.Os, r.ListeningPorts, AsUtc(r.LastDiscoveredAt),
-        AsUtc(r.CreatedAt), AsUtc(r.UpdatedAt));
+        AsUtc(r.CreatedAt), AsUtc(r.UpdatedAt),
+        r.BillingCycle, r.AutoRenew, r.PaymentMethod);
 
     private static DateTimeOffset AsUtc(DateTime value) => new(DateTime.SpecifyKind(value, DateTimeKind.Utc));
 
@@ -216,6 +226,7 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
         Guid Id, string Name, string? Provider, string? IpAddress, string? Hostname, string? Role,
         int? CpuCores, double? RamGb, double? DiskGb, string? Location, decimal? MonthlyCost, string? Currency,
         DateOnly? PaidUntil, int? UserCount, string? Notes, Guid? LinkedHealthCheckId, string? LinkedHostName,
+        string? BillingCycle, bool AutoRenew, string? PaymentMethod,
         string? Os, string? ListeningPorts, DateTime? LastDiscoveredAt,
         DateTime CreatedAt, DateTime UpdatedAt);
 
@@ -223,6 +234,7 @@ internal sealed class ServerRepository(NpgsqlDataSource dataSource) : IServerRep
         Guid Id, string Name, string? Provider, string? IpAddress, string? Hostname, string? Role,
         int? CpuCores, double? RamGb, double? DiskGb, string? Location, decimal? MonthlyCost, string? Currency,
         DateOnly? PaidUntil, int? UserCount, string? Notes, Guid? LinkedHealthCheckId, string? LinkedHostName,
+        string? BillingCycle, bool AutoRenew, string? PaymentMethod,
         string? Os, string? ListeningPorts, DateTime? LastDiscoveredAt, bool? IsUp);
 
     private sealed record LinkRow(Guid Id, Guid FromId, Guid ToId, string Kind);

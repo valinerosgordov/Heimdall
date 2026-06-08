@@ -26,6 +26,9 @@ public sealed class Server : AggregateRoot<ServerId>
     public decimal? MonthlyCost { get; private set; }
     public string? Currency { get; private set; }
     public DateOnly? PaidUntil { get; private set; }
+    public string? BillingCycle { get; private set; }
+    public bool AutoRenew { get; private set; }
+    public string? PaymentMethod { get; private set; }
     public int? UserCount { get; private set; }
     public string? Notes { get; private set; }
     public Guid? LinkedHealthCheckId { get; private set; }
@@ -109,6 +112,9 @@ public sealed class Server : AggregateRoot<ServerId>
         MonthlyCost = d.MonthlyCost;
         Currency = Clean(d.Currency, 8);
         PaidUntil = d.PaidUntil;
+        BillingCycle = Clean(d.BillingCycle, 20);
+        if (d.AutoRenew is { } autoRenew) AutoRenew = autoRenew;
+        PaymentMethod = Clean(d.PaymentMethod, 60);
         UserCount = d.UserCount;
         Notes = Clean(d.Notes, MaxNotesLength);
         LinkedHealthCheckId = d.LinkedHealthCheckId;
@@ -146,7 +152,10 @@ public sealed class Server : AggregateRoot<ServerId>
         string? listeningPorts,
         DateTimeOffset? lastDiscoveredAt,
         DateTimeOffset createdAt,
-        DateTimeOffset updatedAt)
+        DateTimeOffset updatedAt,
+        string? billingCycle,
+        bool autoRenew,
+        string? paymentMethod)
         => new(id, createdAt)
         {
             Name = name,
@@ -169,5 +178,8 @@ public sealed class Server : AggregateRoot<ServerId>
             ListeningPorts = listeningPorts,
             LastDiscoveredAt = lastDiscoveredAt,
             UpdatedAt = updatedAt,
+            BillingCycle = billingCycle,
+            AutoRenew = autoRenew,
+            PaymentMethod = paymentMethod,
         };
 }

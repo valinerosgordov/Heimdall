@@ -165,6 +165,9 @@ export default function InfraPage() {
       notes: s.notes,
       linkedHealthCheckId: s.linkedHealthCheckId,
       linkedHostName: s.linkedHostName,
+      billingCycle: s.billingCycle,
+      autoRenew: s.autoRenew,
+      paymentMethod: s.paymentMethod,
     });
     setShowForm(true);
     setError(null);
@@ -271,6 +274,19 @@ export default function InfraPage() {
               Paid until
               <input type="date" value={form.paidUntil ?? ""}
                 onChange={(e) => setForm({ ...form, paidUntil: e.target.value })} className={`font-mono ${inputClass}`} />
+            </label>
+            <select value={form.billingCycle ?? "monthly"} title="Billing cycle"
+              onChange={(e) => setForm({ ...form, billingCycle: e.target.value })} className={inputClass}>
+              <option value="monthly">monthly</option>
+              <option value="quarterly">quarterly</option>
+              <option value="yearly">yearly</option>
+            </select>
+            <input placeholder="Payment method" value={form.paymentMethod ?? ""}
+              onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })} className={inputClass} />
+            <label className="col-span-2 flex items-center gap-2 self-end text-xs text-muted">
+              <input type="checkbox" checked={form.autoRenew ?? false}
+                onChange={(e) => setForm({ ...form, autoRenew: e.target.checked })} />
+              auto-renew
             </label>
             <select value={form.linkedHealthCheckId ?? ""}
               onChange={(e) => setForm({ ...form, linkedHealthCheckId: e.target.value || null })}

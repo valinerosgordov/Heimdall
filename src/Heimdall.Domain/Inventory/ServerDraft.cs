@@ -17,4 +17,7 @@ public sealed record ServerDraft(
     int? UserCount,
     string? Notes,
     Guid? LinkedHealthCheckId,
-    string? LinkedHostName);
+    string? LinkedHostName,
+    string? BillingCycle = null,
+    bool? AutoRenew = null,
+    string? PaymentMethod = null);
