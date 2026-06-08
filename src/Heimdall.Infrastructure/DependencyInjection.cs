@@ -37,6 +37,7 @@ public static class DependencyInjection
         // Health-check probes + scheduler.
         services.AddSingleton<IHealthProbe, HttpHealthProbe>();
         services.AddSingleton<IHealthProbe, TcpHealthProbe>();
+        services.AddSingleton<IHealthProbe, TlsHealthProbe>();
         services.AddHttpClient(HttpHealthProbe.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(10))
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
         services.AddHostedService<HealthCheckScheduler>();

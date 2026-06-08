@@ -17,7 +17,7 @@ export default function AddHealthCheck() {
     const ok = await createHealthCheck(form);
     setBusy(false);
     if (!ok) {
-      setError("Could not add — check the values (HTTP: an http(s) URL; TCP: host:port).");
+      setError("Could not add — check the values (HTTP: http(s) URL; TCP: host:port; TLS: host).");
       return;
     }
     setForm(EMPTY);
@@ -39,10 +39,11 @@ export default function AddHealthCheck() {
       >
         <option value="Http">HTTP</option>
         <option value="Tcp">TCP</option>
+        <option value="Tls">TLS</option>
       </select>
       <input
         required
-        placeholder={form.kind === "Tcp" ? "host:port" : "https://host/health"}
+        placeholder={form.kind === "Tcp" ? "host:port" : form.kind === "Tls" ? "host (cert expiry)" : "https://host/health"}
         value={form.target}
         onChange={(e) => setForm({ ...form, target: e.target.value })}
         className="col-span-2 bg-elevated px-2 py-1.5 font-mono text-ink outline-none md:col-span-1"

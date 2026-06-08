@@ -6,6 +6,13 @@ function stateOf(check: HealthCheckStatus): StatusState {
   return check.isUp ? "up" : "down";
 }
 
+// For TLS checks the "latency" value carries days-to-certificate-expiry.
+function certColor(days: number): string {
+  if (days < 7) return "var(--danger)";
+  if (days < 30) return "var(--warning)";
+  return "var(--success)";
+}
+
 export default function HealthBoard({
   checks,
   onDelete,
@@ -39,7 +46,15 @@ export default function HealthBoard({
             </div>
           </div>
           <div className="font-mono text-sm tabular-nums text-muted">
-            {check.latencyMs === null ? "--" : `${check.latencyMs.toFixed(0)} ms`}
+            {check.latencyMs === null ? (
+              "--"
+            ) : check.kind.toLowerCase() === "tls" ? (
+              <span style={{ color: certColor(check.latencyMs) }} title="Days until the certificate expires">
+                {check.latencyMs.toFixed(0)}d
+              </span>
+            ) : (
+              `${check.latencyMs.toFixed(0)} ms`
+            )}
           </div>
           <div
             className="font-mono text-xs tabular-nums"

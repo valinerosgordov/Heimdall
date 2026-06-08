@@ -45,6 +45,18 @@ public sealed class HealthCheckDomainTests
         => HealthCheckTarget.Create("x", "Tcp", target, 30, Now).IsFailure.Should().BeTrue();
 
     [Fact]
+    public void Create_tls_target_defaults_to_443()
+        => HealthCheckTarget.Create("cert", "Tls", "example.com", 60, Now).Value.Target.Should().Be("example.com:443");
+
+    [Theory]
+    [InlineData("example.com:8443", true)]
+    [InlineData("example.com", true)]
+    [InlineData("host:notaport", false)]
+    [InlineData("", false)]
+    public void Create_validates_tls_target(string target, bool expectSuccess)
+        => HealthCheckTarget.Create("cert", "Tls", target, 60, Now).IsSuccess.Should().Be(expectSuccess);
+
+    [Fact]
     public void Create_clamps_interval_to_minimum()
         => HealthCheckTarget.Create("x", "Http", "https://e.com", 1, Now).Value.IntervalSeconds.Should().Be(5);
 

@@ -91,6 +91,17 @@ public sealed class HealthCheckTarget : AggregateRoot<HealthCheckTargetId>
                     return Error.Validation("HealthCheck.TargetInvalid", "Tcp target must be 'host:port'.");
                 return value;
 
+            case ProbeKind.Tls:
+                var tlsParts = value.Split(':');
+                if (tlsParts.Length == 1 && !string.IsNullOrWhiteSpace(tlsParts[0]))
+                    return $"{tlsParts[0]}:443"; // default to the HTTPS port
+                if (tlsParts.Length == 2
+                    && !string.IsNullOrWhiteSpace(tlsParts[0])
+                    && int.TryParse(tlsParts[1], out var tlsPort)
+                    && tlsPort is >= 1 and <= 65535)
+                    return value;
+                return Error.Validation("HealthCheck.TargetInvalid", "Tls target must be 'host' or 'host:port'.");
+
             default:
                 return Error.Validation("HealthCheck.KindInvalid", "Unsupported probe kind.");
         }
