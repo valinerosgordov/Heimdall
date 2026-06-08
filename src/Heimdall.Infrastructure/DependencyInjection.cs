@@ -52,6 +52,10 @@ public static class DependencyInjection
         // Inventory: renewal-date reminders through the same notification channels.
         services.AddHostedService<Inventory.BillingReminderService>();
 
+        // Inventory: scheduled read-only SSH discovery (targets in config/appsettings, never the DB or repo).
+        services.Configure<Inventory.SshDiscoveryOptions>(configuration.GetSection(Inventory.SshDiscoveryOptions.Section));
+        services.AddHostedService<Inventory.SshDiscoveryService>();
+
         return services;
     }
 }

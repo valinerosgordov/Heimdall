@@ -16,6 +16,11 @@
     "EnrollmentKey": "dev-local-enrollment-key-change-me",
     "Jwt": {
       "LifetimeHours": 8
+    },
+    "//SshDiscovery": "Optional read-only SSH discovery: Heimdall periodically re-probes each server and refreshes its inventory (OS / CPU / RAM / disk / ports). 'Name' must match a server card; 'KeyPath' points to a LOCAL private key file (e.g. ~/.ssh/id_ed25519) — the key material is never stored. This section lives only in your gitignored appsettings.Development.json, never in the repo.",
+    "SshDiscovery": {
+      "IntervalMinutes": 30,
+      "Servers": []
     }
   }
 }
